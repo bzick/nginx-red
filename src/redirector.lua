@@ -1,10 +1,16 @@
---require("resty.core")
+local ngx = ngx
 
---- Serialize the table
---- @param tbl table
---- @param indent number отступ в количествах пробелов
---- @return string
-function dump_table(tbl, indent, tables)
+local rdr = {}
+
+function rdr.start_reader(self, rules_path)
+    ngx.log(ngx.WARN, "start_reader with", rules_path)
+end
+
+function rdr.route(self)
+    ngx.log(ngx.WARN, "route")
+end
+
+function rdr.dump_table(tbl, indent, tables)
     if not indent then
         indent = 0
     elseif indent > 16 then
@@ -54,3 +60,5 @@ function dump_table(tbl, indent, tables)
         return "{}"
     end
 end
+
+return rdr

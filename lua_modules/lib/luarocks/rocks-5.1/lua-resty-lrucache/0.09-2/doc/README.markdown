@@ -40,7 +40,7 @@ Synopsis
 
 local _M = {}
 
--- alternatively: local lrucache = require "resty.lrucache.pureffi"
+-- alternatively: local lrucache = require "_resty.lrucache.pureffi"
 local lrucache = require "resty.lrucache"
 
 -- we need to initialize the cache on the lua module level so that
@@ -69,7 +69,7 @@ return _M
 # nginx.conf
 
 http {
-    lua_package_path "/path/to/lua-resty-lrucache/lib/?.lua;;";
+    lua_package_path "/path/to/lua-_resty-lrucache/lib/?.lua;;";
 
     server {
         listen 8080;
@@ -217,7 +217,7 @@ add the path of your lua-resty-lrucache source tree to ngx_lua's Lua module sear
 ```nginx
     # nginx.conf
     http {
-        lua_package_path "/path/to/lua-resty-lrucache/lib/?.lua;;";
+        lua_package_path "/path/to/lua-_resty-lrucache/lib/?.lua;;";
         ...
     }
 ```

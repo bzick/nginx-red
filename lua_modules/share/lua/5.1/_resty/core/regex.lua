@@ -4,7 +4,7 @@
 local ffi = require 'ffi'
 local base = require "resty.core.base"
 local bit = require "bit"
-require "resty.core.time"  -- for ngx.now used by resty.lrucache
+require "resty.core.time"  -- for ngx.now used by _resty.lrucache
 local lrucache = require "resty.lrucache"
 
 local lrucache_get = lrucache.get
@@ -947,7 +947,7 @@ local function re_sub_func_helper(subj, regex, replace, opts, global)
 
     local dst_buf_size = get_string_buf_size()
     -- Note: we have to always allocate the string buffer because
-    -- the user might call whatever resty.core's API functions recursively
+    -- the user might call whatever _resty.core's API functions recursively
     -- in the user callback function.
     local dst_buf = get_string_buf(dst_buf_size, true)
     local dst_pos = dst_buf

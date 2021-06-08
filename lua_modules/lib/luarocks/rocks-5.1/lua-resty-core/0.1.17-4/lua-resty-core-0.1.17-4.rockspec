@@ -1,11 +1,11 @@
-package = "lua-resty-core"
+package = "lua-_resty-core"
 version = "0.1.17-4"
 source = {
-   url = "git://github.com/openresty/lua-resty-core",
+   url = "git://github.com/openresty/lua-_resty-core",
    tag = "v0.1.17",
 }
 description = {
-   summary = "lua-resty-core -  New FFI-based Lua API for ngx_http_lua_module and/or ngx_stream_lua_module.",
+   summary = "lua-_resty-core -  New FFI-based Lua API for ngx_http_lua_module and/or ngx_stream_lua_module.",
    detailed = [[
 
 This pure Lua library reimplements part of the ngx_lua module's Nginx API for Lua with LuaJIT FFI and installs the new FFI-based Lua API into the ngx.* and ndk.* namespaces used by the ngx_lua module.
@@ -41,24 +41,24 @@ build = {
 ["ngx.semaphore"] = "lib/ngx/semaphore.lua",
 ["ngx.ssl"] = "lib/ngx/ssl.lua",
 ["ngx.ssl.session"] = "lib/ngx/ssl/session.lua",
-["resty.core"] = "lib/resty/core.lua",
-["resty.core.base"] = "lib/resty/core/base.lua",
-["resty.core.base64"] = "lib/resty/core/base64.lua",
-["resty.core.ctx"] = "lib/resty/core/ctx.lua",
-["resty.core.exit"] = "lib/resty/core/exit.lua",
-["resty.core.hash"] = "lib/resty/core/hash.lua",
-["resty.core.misc"] = "lib/resty/core/misc.lua",
-["resty.core.ndk"] = "lib/resty/core/ndk.lua",
-["resty.core.phase"] = "lib/resty/core/phase.lua",
-["resty.core.regex"] = "lib/resty/core/regex.lua",
-["resty.core.request"] = "lib/resty/core/request.lua",
-["resty.core.response"] = "lib/resty/core/response.lua",
-["resty.core.shdict"] = "lib/resty/core/shdict.lua",
-["resty.core.time"] = "lib/resty/core/time.lua",
-["resty.core.uri"] = "lib/resty/core/uri.lua",
-["resty.core.utils"] = "lib/resty/core/utils.lua",
-["resty.core.var"] = "lib/resty/core/var.lua",
-["resty.core.worker"] = "lib/resty/core/worker.lua",
+["resty.core"] = "lib/_resty/core.lua",
+["resty.core.base"] = "lib/_resty/core/base.lua",
+["resty.core.base64"] = "lib/_resty/core/base64.lua",
+["resty.core.ctx"] = "lib/_resty/core/ctx.lua",
+["resty.core.exit"] = "lib/_resty/core/exit.lua",
+["resty.core.hash"] = "lib/_resty/core/hash.lua",
+["resty.core.misc"] = "lib/_resty/core/misc.lua",
+["resty.core.ndk"] = "lib/_resty/core/ndk.lua",
+["resty.core.phase"] = "lib/_resty/core/phase.lua",
+["resty.core.regex"] = "lib/_resty/core/regex.lua",
+["resty.core.request"] = "lib/_resty/core/request.lua",
+["resty.core.response"] = "lib/_resty/core/response.lua",
+["resty.core.shdict"] = "lib/_resty/core/shdict.lua",
+["resty.core.time"] = "lib/_resty/core/time.lua",
+["resty.core.uri"] = "lib/_resty/core/uri.lua",
+["resty.core.utils"] = "lib/_resty/core/utils.lua",
+["resty.core.var"] = "lib/_resty/core/var.lua",
+["resty.core.worker"] = "lib/_resty/core/worker.lua",
   },
 }
 

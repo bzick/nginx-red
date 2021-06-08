@@ -1,6 +1,6 @@
 -- Copyright (C) Yichun Zhang (agentzh)
 -- Copyright (C) cuiweixie
--- I hereby assign copyright in this code to the lua-resty-core project,
+-- I hereby assign copyright in this code to the lua-_resty-core project,
 -- to be licensed under the same terms as the rest of the code.
 
 

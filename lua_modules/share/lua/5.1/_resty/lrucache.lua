@@ -13,7 +13,7 @@ local tonumber = tonumber
 
 
 if string.find(jit.version, " 2.0", 1, true) then
-    ngx.log(ngx.ALERT, "use of lua-resty-lrucache with LuaJIT 2.0 is ",
+    ngx.log(ngx.ALERT, "use of lua-_resty-lrucache with LuaJIT 2.0 is ",
                        "not recommended; use LuaJIT 2.1+ instead")
 end
 
