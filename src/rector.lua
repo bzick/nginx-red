@@ -1,6 +1,26 @@
 local xml2lua = require("xml2lua")
 local ngx = ngx
 local cjson = require("cjson.safe")
+local utils = require("utils")
+local cache = ngx.shared["urlrewrite_cache"] or nil
+
+--- Объект логгера
+local log = {}
+
+--- Логгирование в error лог nginx-а c уровнем info
+function log.info(...)
+    ngx.log(ngx.INFO, utils.dump(...))
+end
+
+--- Логгирование в error лог nginx-а c уровнем warning
+function log.warn(...)
+    ngx.log(ngx.WARN, utils.dump(...))
+end
+
+--- Логгирование в error лог nginx-а c уровнем error
+function log.err(...)
+    ngx.log(ngx.ERR, utils.dump(...))
+end
 
 --- @class rector.rule псевдо-тип нужен для хинтов
 --- @field note string
@@ -27,29 +47,95 @@ local REWRITE_URL   = 3
 --- Дополнительное условие на query (тег <condition>)
 local COND_QUERY_STRING   = 1
 
+local CACHE_KEY_WATCHER_LOCK = "watcher:lock"
+local CACHE_KEY_RULES_MODIFIED = "rules:mtime"
+local CACHE_KEY_RULES_DATA = "rules:data"
+local CACHE_KEY_LANGS_MODIFIED = "langs:mtime"
+local CACHE_KEY_LANGS_DATA = "langs:data"
+
 --- @type table
---- @field rules rector.rule
---- @field cache userdata
+--- @field rules rector.rule[] список правил
+--- @field cache userdata nginx кеш
+--- @field langs table<string,boolean> хеш-таблица языков
 local rector = {
     rules = { },
     langs = { },
-    cache = nil,
-
+    cache = cache,
+    rules_modified = 0,
+    langs_modified = 0,
 }
-local log = {}
 
-function log.info(...)
-    ngx.log(ngx.INFO, rector.dump(...))
+--- Так как у nginx и lua нет какого-либо filewatcher то будем проверять файлы на изменение раз в timeout секунд
+--- @param timeout number количество секунд между проверками файла
+function rector.file_watcher(timeout, rules_path, langs_path)
+    local wait_time = 1
+    if wait_time >= timeout then
+        timeout = timeout / 2
+    end
+    local _, err = ngx.timer.every(timeout, function()
+        -- Выставляем блокировку на эксклюзивный доступ к файловой системе.
+        -- Другие воркеры должны вернутся позже за результатом.
+        -- Блокировка ставится на половину времени от timeout что бы следующий воркер мог взяться за дело.
+        local ok = rector.cache:add(CACHE_KEY_WATCHER_LOCK, 1, timeout / 2)
+        if ok then
+            -- так как получили эксклюзивную блокировку то начинаем обновление
+            if utils.get_file_mtime(rules_path) ~= rector.cache:get(CACHE_KEY_RULES_MODIFIED) then
+                -- используем pcall для безопасного вызова метода, даже если там произойдёт паника
+                local success, err = pcall(rector.load_rules, rules_path)
+                if not success then
+                    log.err("Failed to load rules from " .. rules_path .. ": " .. tostring(err))
+                else
+                    rector.rules_modified = ngx.now()
+                    rector.cache:set(CACHE_KEY_RULES_MODIFIED, rector.rules_modified)
+                    rector.cache:set(CACHE_KEY_RULES_DATA, cjson.encode(rector.rules))
+                end
+            end
+            if utils.get_file_mtime(langs_path) ~= rector.cache:get(CACHE_KEY_LANGS_MODIFIED) then
+                -- используем pcall для безопасного вызова метода, даже если там произойдёт паника
+                local success, err = pcall(rector.load_langs, langs_path)
+                if not success then
+                    log.err("Failed to load langs from " .. rules_path .. ": " .. tostring(err))
+                else
+                    rector.langs_modified = ngx.now()
+                    rector.cache:set(CACHE_KEY_LANGS_MODIFIED, rector.langs_modified)
+                    rector.cache:set(CACHE_KEY_LANGS_DATA, cjson.encode(rector.langs))
+                end
+            end
+            rector.cache:delete(CACHE_KEY_WATCHER_LOCK)
+        else
+            ngx.sleep(wait_time)
+            local rules_modified = rector.cache:get(CACHE_KEY_RULES_MODIFIED)
+            if not rector.rules_modified or rector.rules_modified ~= rules_modified then
+                local data  = rector.cache:get(CACHE_KEY_RULES_DATA)
+                if data then
+                    local rules = cjson.decode(data)
+                    if rules then
+                        rector.rules = rules
+                        rector.rules_modified = rules_modified
+                    end
+                end
+            end
+            local langs_modified = rector.cache:get(CACHE_KEY_LANGS_MODIFIED)
+            if not rector.langs_modified or rector.langs_modified ~= langs_modified then
+                local data  = rector.cache:get(CACHE_KEY_LANGS_DATA)
+                if data then
+                    local langs = cjson.decode(data)
+                    if langs then
+                        rector.langs = langs
+                        rector.langs_modified = langs_modified
+                    end
+                end
+            end
+        end
+    end)
+    if err then
+        log.err("Failed to setup timer: " .. tostring(err))
+    end
 end
 
-function log.warn(...)
-    ngx.log(ngx.WARN, rector.dump(...))
-end
-
-function log.err(...)
-    ngx.log(ngx.ERR, rector.dump(...))
-end
-
+--- Загружает доступные языки с файловой системы.
+--- Метод не использует nginx api, и, как следствие, можно вызвать в любом месте.
+--- @param langs_path string json файл языков вида ["ru-ru", "en-us", ...]
 function rector.load_langs(langs_path)
     local file = io.open(langs_path, "r")
     if not file then
@@ -59,6 +145,7 @@ function rector.load_langs(langs_path)
     local json = file:read("*all")
     json = cjson.decode(json)
     if not json then
+        log.warn("No one language found or invalid json (file " .. langs_path .. ")")
         return
     end
     local langs = {}
@@ -69,6 +156,9 @@ function rector.load_langs(langs_path)
     rector.langs = langs
 end
 
+--- Загружает правила редиректов из XML файла.
+--- Метод не использует nginx api, и, как следствие, можно вызвать в любом месте.
+--- @param rules_path string полный путь до XML с правилами
 function rector.load_rules(rules_path)
     local handler = require("xmlhandler.tree")
     local file = io.open(rules_path, "r")
@@ -94,9 +184,9 @@ function rector.load_rules(rules_path)
     --  </rule>
     --  ...
     -- </urlrewrite>
-    if handler.root
-        and handler.root.urlrewrite
-        and handler.root.urlrewrite.rule
+    if handler.root                         -- есть рутовый элемент
+        and handler.root.urlrewrite         -- есть тег <urlrewrite>
+        and handler.root.urlrewrite.rule    -- есть "массив" из <rule>
         and type(handler.root.urlrewrite.rule) == "table" then
 
         local rules = {}
@@ -133,7 +223,7 @@ function rector.load_rules(rules_path)
                     end
                 end
             else
-                log.warn("Invalid 'rule.to' field format. Skip the rule.")
+                log.info("Invalid 'rule.to' field format. Skip the rule.")
                 rule.valid = false
             end
             -- исправляем URL которые начинаются с // на https://
@@ -159,7 +249,7 @@ function rector.load_rules(rules_path)
                     end
                     if v.from._attr["languages"] then -- есть условия на языки <from languages="pt-pt">
                         log.info("Languages ", v.from._attr["languages"])
-                        for _, l in ipairs(split(v.from._attr["languages"], ", ")) do
+                        for _, l in ipairs(utils.split(v.from._attr["languages"], ", ")) do
                             if not rule.languages then
                                 rule.languages = {}
                             end
@@ -168,7 +258,7 @@ function rector.load_rules(rules_path)
                     end
                 end
             else
-                log.warn("Invalid 'rule.from' field format. Skip rule")
+                log.info("Invalid 'rule.from' field format. Skip rule")
                 rule.valid = false
             end
 
@@ -194,14 +284,14 @@ function rector.load_rules(rules_path)
             -- перед укладкой правила надо протестировать заранее регулярное выражение
             local _, err = ngx.re.match("test", rule.from)
             if err then
-                log.err("Invalid regex rule.from '" .. rule.from .. "': " .. tostring(err))
+                log.info("Invalid regex rule.from '" .. rule.from .. "': " .. tostring(err))
                 rule.valid = false
             end
 
             if rule.valid then
                 table.insert(rules, rule)
             else
-                log.info("Skip rule (due errors)", v)
+                log.warn("Skip rule (due errors)", v)
             end
         end
         rector.rules = rules
@@ -285,86 +375,6 @@ function rector.try_rule(uri, lang, rule)
         return true
     end
     return false
-end
-
---- Export arguments as string
---- @return string
-function rector.dump(...)
-    local output, n, data = {}, select("#", ...), {...};
-    for i = 1, n do
-        if type(data[i]) == 'table' then
-            table.insert(output, dump_table(data[i], 0, { [tostring(data[i])] = true}))
-        else
-            table.insert(output, tostring(data[i]))
-        end
-    end
-    return table.concat(output, "\n")
-end
-
---- Serialize the table
---- @param tbl table
---- @param indent number отступ в количествах пробелов
---- @return string
-function dump_table(tbl, indent, tables)
-    if not indent then
-        indent = 0
-    elseif indent > 16 then
-        return "*** too deep ***"
-    end
-    local output = {};
-    local mt = getmetatable(tbl)
-    local tab = string.rep("  ", indent + 1)
-    local iter, ctx, key
-    if mt and mt.__pairs then
-        iter, ctx, key = mt.__pairs(tbl)
-    else
-        iter, ctx, key = pairs(tbl)
-    end
-    for k, v in iter, ctx, key do
-        local formatting = tab
-        if type(k) == 'string' then
-            formatting = formatting .. k .. " = "
-        else
-            formatting = formatting .. "[" .. tostring(k) .. "]" .. " = "
-        end
-        if type(v) == "table" then
-            if tables[v] then
-                table.insert(output, formatting .. "*** recursion ***\n")
-            else
-                tables[v] = true
-                table.insert(output, formatting .. dump_table(v, indent + 1, tables) .. "\n")
-                tables[v] = nil
-            end
-        elseif type(v) == "userdata" then
-            local ok, str = pcall(tostring, v)
-            if not ok then
-                str = "*** could not convert to string (userdata): " .. tostring(str) .. " ***"
-            end
-            table.insert(output, formatting .. "(" .. type(v) .. ") " .. str .. "\n")
-        else
-            table.insert(output, formatting .. "(" .. type(v) .. ") " .. tostring(v) .. "\n")
-        end
-    end
-
-    if #output > 0 then
-        return "{\n" .. table.concat(output, "") ..  string.rep("  ", indent) .. "}"
-    else
-        return "{}"
-    end
-end
-
--- split a string
-function split(str, delimiter)
-    local result = { }
-    local from  = 1
-    local delim_from, delim_to = string.find( str, delimiter, from  )
-    while delim_from do
-        table.insert( result, string.sub( str, from , delim_from-1 ) )
-        from  = delim_to + 1
-        delim_from, delim_to = string.find( str, delimiter, from  )
-    end
-    table.insert( result, string.sub( str, from  ) )
-    return result
 end
 
 
