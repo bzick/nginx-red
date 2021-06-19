@@ -1,4 +1,6 @@
 .idea
 .DS_Store
 urlrewrite.all.xml
-langs.json
+urlrewrite.xml
+langs.xml
+src/vendor/lib

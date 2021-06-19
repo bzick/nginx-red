@@ -3,9 +3,8 @@ FROM openresty/openresty:alpine
 
 RUN apk update && apk add curl wget htop bash
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY build/openresty/nginx.conf /usr/local/openresty/nginx/conf/nginx.conf
 COPY ./ /var/www/
-
 
 VOLUME "/var/www"
 
