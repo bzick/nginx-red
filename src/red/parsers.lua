@@ -6,6 +6,7 @@ local table = table
 local ngx   = ngx
 local log       = require("log")
 local xml2lua   = require("xml2lua")
+local handler = require("xmlhandler.tree")
 local utils     = require("utils")
 
 
@@ -28,20 +29,22 @@ local parsers = {
 --- @param xml string xml данные языков вида
 --- @return table|nil в случае успеха
 function parsers.langs_parser(xml)
-    local handler = require("xmlhandler.tree")
-    local parser = xml2lua.parser(handler)
+    local h = handler:new()
+    local parser = xml2lua.parser(h)
     parser:parse(xml)
 
-    if handler.root                    -- есть рутовый элемент
-            and handler.root.langs         -- есть тег <langs>
-            and handler.root.langs.lang    -- есть "массив" из <lang>
-            and type(handler.root.langs.lang) == "table" then
+    if h.root                    -- есть рутовый элемент
+        and h.root.langs         -- есть тег <langs>
+        and h.root.langs.lang    -- есть "массив" из <lang>
+        and type(h.root.langs.lang) == "table" then
 
         local langs = {}
-        for _, lang in pairs(handler.root.langs.lang) do
+        for _, lang in pairs(h.root.langs.lang) do
             langs[lang] = true
         end
         return langs
+    else
+        log.warn("failed to parse XML of languages")
     end
 end
 
@@ -50,8 +53,8 @@ end
 --- @param xml string XML с правилами
 --- @return table
 function parsers.rules_parser(xml)
-    local handler = require("xmlhandler.tree")
-    local parser = xml2lua.parser(handler)
+    local h = handler:new()
+    local parser = xml2lua.parser(h)
     parser:parse(xml)
     xml = nil -- высвобождем память
     -- проверяем что xml вообще распарсился и в нём есть массив <rule>
@@ -65,14 +68,14 @@ function parsers.rules_parser(xml)
     --  </rule>
     --  ...
     -- </urlrewrite>
-    if handler.root                         -- есть рутовый элемент
-            and handler.root.urlrewrite         -- есть тег <urlrewrite>
-            and handler.root.urlrewrite.rule    -- есть "массив" из <rule>
-            and type(handler.root.urlrewrite.rule) == "table" then
+    if h.root                         -- есть рутовый элемент
+            and h.root.urlrewrite         -- есть тег <urlrewrite>
+            and h.root.urlrewrite.rule    -- есть "массив" из <rule>
+            and type(h.root.urlrewrite.rule) == "table" then
 
         local rules = {}
 
-        for _, v in pairs(handler.root.urlrewrite.rule) do
+        for _, v in pairs(h.root.urlrewrite.rule) do
             local rule, err = parsers.build_rule(v)
             if err then
                 log.warn(tostring(err) .. " Skip rule", v)

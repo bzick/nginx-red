@@ -55,7 +55,7 @@ function utils.dump_table(tbl, indent, tables)
                 table.insert(output, formatting .. "*** recursion ***\n")
             else
                 tables[v] = true
-                table.insert(output, formatting .. dump_table(v, indent + 1, tables) .. "\n")
+                table.insert(output, formatting .. utils.dump_table(v, indent + 1, tables) .. "\n")
                 tables[v] = nil
             end
         elseif type(v) == "userdata" then

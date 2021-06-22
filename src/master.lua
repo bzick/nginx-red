@@ -1,6 +1,5 @@
-ngx.log(ngx.WARN, "init master")
 --- производим настройку lua. для этого надо настроить пути подгрузки библиотек через package.path
-
+ngx.log(ngx.WARN, "init master")
 --- Функция возвращает директория текущего скрипта.
 --- Эта директория будет использоваться для постороения путей до пакетов.
 --- @return string
@@ -12,10 +11,10 @@ end
 --- настройка путей до пакетов и скриптов самого приложения.
 local root_path = script_path()
 local vendor_path = root_path .. "/vendor"
-package.path = root_path .. "/red/?.lua;" .. vendor_path .. "/share/lua/5.1/?.lua;".. vendor_path .. "/share/lua/5.1/?/init.lua;;"
+--package.path = root_path .. "/red/?.lua;" .. vendor_path .. "/share/lua/5.1/?.lua;".. vendor_path .. "/share/lua/5.1/?/init.lua;;"
 
 --- подгружаем все либы, которые нам нужны
-require("resty.core")
+--require("resty.core")
 require("red")
 local log = require("log")
 
