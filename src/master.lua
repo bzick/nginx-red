@@ -25,3 +25,4 @@ if not red.cache then
     log.err("Cache dictionary not defined. Please insert 'lua_shared_dict cache 8m;' into your nginx config.")
 end
 red.reload() -- загружаем первоначальные данные с сервера
+ngx.log(ngx.WARN, "init master done")

@@ -1,10 +1,14 @@
 FROM alpine:3.14
 
 ARG NGINX_VERSION=1.20.1
+
+# see https://github.com/vision5/ngx_devel_kit/tags
 ARG NGINX_DEVEL_KIT=0.3.1
+
+# see https://github.com/openresty/lua-nginx-module#nginx-compatibility
 ARG LUA_NGINX_MODULE=0.10.19
 
-# see https://github.com/openresty/docker-openresty/blob/master/alpine/Dockerfile
+# for lua module see https://github.com/openresty/docker-openresty/blob/master/alpine/Dockerfile
 ENV CONFIG="\
     --prefix=/etc/nginx \
     --sbin-path=/usr/sbin/nginx \
@@ -19,8 +23,6 @@ ENV CONFIG="\
     --http-fastcgi-temp-path=/var/cache/nginx/fastcgi_temp \
     --http-uwsgi-temp-path=/var/cache/nginx/uwsgi_temp \
     --http-scgi-temp-path=/var/cache/nginx/scgi_temp \
-    --user=nginx \
-    --group=nginx \
     --with-http_ssl_module \
     --with-http_realip_module \
     --with-http_addition_module \
@@ -40,7 +42,7 @@ ENV CONFIG="\
     --with-compat \
     --with-http_v2_module \
     --with-pcre \
-    --with-cc-opt='-DNGX_LUA_ABORT_AT_PANIC -I/usr/include -I/usr/include/luajit-2.1' \
+    --with-cc-opt='-DNGX_LUA_ABORT_AT_PANIC -I/usr/include/luajit-2.1' \
     --with-ld-opt='-L/usr/lib -Wl,-rpath,/usr/lib/' \
     --add-dynamic-module=/build/ngx_devel_kit-$NGINX_DEVEL_KIT\
     --add-dynamic-module=/build/lua-nginx-module-$LUA_NGINX_MODULE\
@@ -51,20 +53,32 @@ RUN apk update && apk upgrade && apk add --no-cache curl \
     openssl-dev pcre-dev zlib-dev \
     luajit-dev luajit
 
-RUN mkdir /build
+RUN mkdir /build && mkdir -p /var/cache/nginx && mkdir -p /var/logs/nginx
 WORKDIR /build
 
-RUN curl -fSL https://github.com/vision5/ngx_devel_kit/archive/refs/tags/v$NGINX_DEVEL_KIT.tar.gz -o /build/ngx_devel_kit.tar.gz && \
+RUN curl -fsSL https://github.com/vision5/ngx_devel_kit/archive/refs/tags/v$NGINX_DEVEL_KIT.tar.gz -o /build/ngx_devel_kit.tar.gz && \
     tar -zxf ngx_devel_kit.tar.gz
 
-RUN curl -fSL https://github.com/openresty/lua-nginx-module/archive/refs/tags/v$LUA_NGINX_MODULE.tar.gz -o /build/lua-nginx-module.tar.gz && \
+RUN curl -fsSL https://github.com/openresty/lua-nginx-module/archive/refs/tags/v$LUA_NGINX_MODULE.tar.gz -o /build/lua-nginx-module.tar.gz && \
     tar -zxf lua-nginx-module.tar.gz
 
-RUN curl -SL https://nginx.org/download/nginx-$NGINX_VERSION.tar.gz -o /build/nginx.tar.gz && \
-    ls -la && \
+RUN curl -fsSL https://nginx.org/download/nginx-$NGINX_VERSION.tar.gz -o /build/nginx.tar.gz && \
     tar -zxf nginx.tar.gz
 
 ENV LUAJIT_LIB=/usr/lib/
 ENV LUAJIT_INC=/usr/include/luajit-2.1/
 
-RUN cd /build/nginx-$NGINX_VERSION && echo "configure" && ./configure $CONFIG && echo "make" && make -j$(nproc)
+## Сброка nginx и модулей
+RUN cd /build/nginx-$NGINX_VERSION && eval ./configure $CONFIG
+RUN cd /build/nginx-$NGINX_VERSION && make -j$(nproc) && make install
+
+## Готовые модули
+RUN ls /build/nginx-$NGINX_VERSION/objs/ndk_http_module.so
+RUN ls /build/nginx-$NGINX_VERSION/objs/ngx_http_lua_module.so
+
+COPY build/nginx/nginx.conf /etc/nginx/nginx.conf
+
+COPY ./ /var/www/
+VOLUME "/var/www"
+
+CMD ["/usr/sbin/nginx", "-g", "daemon off;"]

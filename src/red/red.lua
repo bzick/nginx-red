@@ -201,31 +201,28 @@ end
 
 --- Ищет и применяет правило к текущему запросу
 function red.route()
-    local ok, err = pcall(function()
-        local uri = ngx.var.uri
-        local lang
-        if uri == "/" then
+    local uri = ngx.var.uri
+    local lang
+    if uri == "/" then
+        return
+    end
+    red.check_cache()
+    -- определяем язык в URL, если есть и забираем кусок URL без языка в начале
+    if uri:len() > 6 and uri:sub(7,7) == "/" then
+        lang = uri:sub(2, 6)
+        if red.langs[ lang ] then
+            uri = uri:sub(7)
+        else
+            lang = nil
+        end
+    end
+
+    --- нужно перебрать каждое правило и попробовать применить к текущему uri
+    for _, rule in ipairs(red.rules) do
+        if red.try_rule(uri, lang, rule) then
             return
         end
-        red.check_cache()
-        -- определяем язык в URL, если есть и забираем кусок URL без языка в начале
-        if uri:len() > 6 and uri:sub(7,7) == "/" then
-            lang = uri:sub(2, 6)
-            if red.langs[ lang ] then
-                uri = uri:sub(7)
-            else
-                lang = nil
-            end
-        end
-
-        --- нужно перебрать каждое правило и попробовать применить к текущему uri
-        for _, rule in ipairs(red.rules) do
-            if red.try_rule(uri, lang, rule) then
-                return
-            end
-        end
-    end)
-
+    end
 end
 
 --- Пробует применить правило.
