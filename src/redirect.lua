@@ -1,4 +1,3 @@
-ngx.log(ngx.WARN, "red.route!")
 local red = red
 local pcall = pcall
 local tostring = tostring

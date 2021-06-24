@@ -88,7 +88,7 @@ end
 --- 2.2) Правила парсятся, и сохраняются в словарь в CACHE_KEY_RULES_DATA и в red.rules
 --- 2.3) Загружаются с диска языки, если файл поменялся с последнего запуска метода
 --- 2.4) Языки парсятся, и сохраняются в словарь в CACHE_KEY_LANGS_DATA и в red.langs
---- 3) Не удалось установить блокировку. Это воркер не будет работать с диском.
+--- 3) Не удалось установить блокировку. Этот воркер не будет работать с диском.
 function red.reload()
     if not red.cache then
         return
@@ -99,7 +99,7 @@ function red.reload()
     if ok then
         local cache_is_modified = false
         -- так как получили эксклюзивную блокировку то начинаем обновление
-        -- Сначало обновляем кеш правил
+        -- Сначала обновляем кеш правил
         local rules, rules_err = red.load_to_cache(rules_path, parsers.rules_parser, CACHE_KEY_RULES_MODIFIED, CACHE_KEY_RULES_DATA)
         if rules_err then
             log.err("Failed to load rules from " .. (rules_path or "none") .. ": " .. rules_err)

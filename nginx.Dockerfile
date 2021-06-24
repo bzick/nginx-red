@@ -48,12 +48,12 @@ ENV CONFIG="\
     --add-dynamic-module=/build/lua-nginx-module-$LUA_NGINX_MODULE\
     "
 
-RUN apk update && apk upgrade && apk add --no-cache curl \
+RUN apk update && apk upgrade && apk add curl \
     gcc make libc-dev linux-headers \
     openssl-dev pcre-dev zlib-dev \
-    luajit-dev luajit
+    luajit-dev
 
-RUN mkdir /build && mkdir -p /var/cache/nginx && mkdir -p /var/logs/nginx
+RUN mkdir /build && mkdir -p /var/cache/nginx && mkdir -p /var/log/nginx
 WORKDIR /build
 
 RUN curl -fsSL https://github.com/vision5/ngx_devel_kit/archive/refs/tags/v$NGINX_DEVEL_KIT.tar.gz -o /build/ngx_devel_kit.tar.gz && \
@@ -73,12 +73,16 @@ RUN cd /build/nginx-$NGINX_VERSION && eval ./configure $CONFIG
 RUN cd /build/nginx-$NGINX_VERSION && make -j$(nproc) && make install
 
 ## Готовые модули
-RUN ls /build/nginx-$NGINX_VERSION/objs/ndk_http_module.so
-RUN ls /build/nginx-$NGINX_VERSION/objs/ngx_http_lua_module.so
+RUN ls /build/nginx-$NGINX_VERSION/objs/ndk_http_module.so \
+    && ls /build/nginx-$NGINX_VERSION/objs/ngx_http_lua_module.so
+
+RUN ln -sf /dev/stdout /var/log/nginx/access.log \
+    && ln -sf /dev/stderr /var/log/nginx/error.log
 
 COPY build/nginx/nginx.conf /etc/nginx/nginx.conf
 
 COPY ./ /var/www/
 VOLUME "/var/www"
+#VOLUME "/etc/nginx/nginx.conf"
 
 CMD ["/usr/sbin/nginx", "-g", "daemon off;"]
