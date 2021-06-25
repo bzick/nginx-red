@@ -3,11 +3,12 @@ Nginx Red
 
 <img align="right" src="./red-logo.svg" width="200">
 
-Nginx Redirector на базе OpenResty компонентов (nginx + ngx_http_lua_module + luajit + resty-core):
+Nginx Redirector на базе OpenResty компонентов:
 - сам nginx
 - nginx модуль [ngx_devel_kit](https://github.com/vision5/ngx_devel_kit) фреймворк для C API Nginx
 - nginx модуль [lua-nginx-module](https://github.com/openresty/lua-nginx-module) модуль запуска Lua
-- интерпретатор [luajit](https://luajit.org/) версии 2.1. Одна из самых быстрых JIT машин, с самым быстрым [FFI](https://en.wikipedia.org/wiki/Foreign_function_interface)
+- интерпретатор [luajit](https://luajit.org/) версии 2.1. 
+  Одна из самых быстрых JIT машин, с самым быстрым [FFI](https://en.wikipedia.org/wiki/Foreign_function_interface)
 - библиотеки [resty-core](https://github.com/openresty/lua-resty-core). Lua API Nginx-а на базе FFI
 - исходный код [Red](./src)
 
@@ -17,6 +18,13 @@ Nginx Redirector на базе OpenResty компонентов (nginx + ngx_htt
   Всё уже встроено и настроено. Нет точечного выбора версии ПО.
 - Установка с нуля, на основе Nginx: [Dockerfile](./nginx.Dockerfile). 
   Сборка nginx, luajit, nginx модулей ngx_devel_kit и lua-nginx-module. Можно выбирать версии ПО.
+
+## Требования
+
+- сервер Nginx
+  - с модулем ngx_devel_kit
+  - с модулем lua-nginx-module
+- пакет luajit-dev
 
 ## Настройка
 
