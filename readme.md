@@ -24,7 +24,7 @@ Nginx Redirector на базе OpenResty компонентов:
 - сервер Nginx
   - с модулем ngx_devel_kit
   - с модулем lua-nginx-module
-- пакет luajit-dev
+- пакет luajit-dev версии 2.1
 
 ## Настройка
 
