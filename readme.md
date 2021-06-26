@@ -59,7 +59,8 @@ env RED_RELOAD_TIMEOUT=10;
 
 ## Обновление/добавление/удаление пакетов
 
-Не используются Си расширения, используются только pure lua пакеты.
+Все зависимости установленные в `src/vendor` отчего не требуется установка и работа с `luarocks`. 
+Так же не используются Си расширения, а только зависимости на чистом lua.
 
 Для обновления зависимостей или применения изменений в зависимостях, достаточно изменить список зависимых 
 пакетов в `./red-git-1.rockspec` и обновить зависимости через luarocks.
@@ -70,15 +71,16 @@ env RED_RELOAD_TIMEOUT=10;
 luarocks install --tree ./src/vendor --no-doc --no-manifest --only-deps ./rockspec/red-git-1.rockspec
 ```
 
-Обновление `resty-core`. `resty-core` обновляется отдельно так как завязано на nginx модуль `lua-nginx-module`.
+Часть зависимостей не указаны в списке зависмостей, так как они сильно завязаны на версию `nginx` и модуль `lua-nginx-module`
+Обновление `resty-core`, версия зависит от `lua-nginx-module`.
 ```bash
 luarocks install  --lua-dir=/usr/local/opt/lua@5.1 --tree ./src/vendor --no-doc --no-manifest ./rockspec/lua-resty-core-0.1.21-1.rockspec
 ```
-Обновление `lua-resty-lrucache`, зависит от `resty-core`
+Обновление `lua-resty-lrucache`, версия зависит от `resty-core`
 ```bash
 luarocks install  --lua-dir=/usr/local/opt/lua@5.1 --tree ./src/vendor --no-doc --no-manifest ./rockspec/lua-resty-lrucache-0.10-1.rockspec
 ```
-Все зависимости должны быть в git.
+Все зависимости должны быть git.
 
 ## Тестовые запросы
 
