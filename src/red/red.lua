@@ -271,6 +271,10 @@ function red.try_rule(uri, lang, rule)
     elseif rule.to_type == parsers.REDIRECT_TEMP then
         ngx.redirect(to, 302)
         return true
+    elseif rule.to_type == parsers.FORWARDING then
+        ngx.req.set_uri_args(query)
+        ngx.req.set_uri(to, false)
+        return true
     end
     return false
 end

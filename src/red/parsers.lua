@@ -18,7 +18,7 @@ local parsers = {
     --- Временный редирект кодом 302
     REDIRECT_TEMP = 2,
     --- Изменение URL
-    REWRITE_URL   = 3,
+    FORWARDING   = 3,
     --- Дополнительное условие на query (тег <condition>)
     COND_QUERY_STRING   = 1
 }
@@ -117,6 +117,10 @@ function parsers.build_rule(v)
         if v.to._attr then
             if v.to._attr["type"] == "permanent-redirect" then -- атрибут type
                 rule.to_type = parsers.REDIRECT_PERM
+            elseif v.to._attr["type"] == "forwarding" then
+                rule.to_type = parsers.FORWARDING
+            elseif v.to._attr["type"] == "temporary-redirect" then
+                rule.to_type = parsers.REDIRECT_TEMP
             end
             if v.to._attr["auto-lang-prefix"] == "false" then -- атрибут auto-lang-prefix
                 rule.auto_lang_prefix = false
