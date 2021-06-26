@@ -3,7 +3,17 @@ Nginx Red
 
 <img align="right" src="./red-logo.svg" width="200">
 
-Nginx Redirector на базе OpenResty компонентов:
+Nginx Redirector — [Tuckey urlrewrite](https://tuckey.org/urlrewrite/) на базе OpenResty или Nginx + Lua.
+
+Поддерживаются все правила [urlrewrite.xml](http://cdn.rawgit.com/paultuckey/urlrewritefilter/master/src/doc/manual/4.0/urlrewrite.xml) версии 4.0.
+Поддержка префиксов языков.
+
+Отличия от Tuckey urlrewrite:
+
+- поведение правила по умолчанию - temporary-redirect
+
+## Состав
+
 - сам nginx
 - nginx модуль [ngx_devel_kit](https://github.com/vision5/ngx_devel_kit) фреймворк для C API Nginx
 - nginx модуль [lua-nginx-module](https://github.com/openresty/lua-nginx-module) модуль запуска Lua
@@ -92,8 +102,8 @@ Location: /?s=full&q=1
 ```
 
 ```
-curl -I '127.0.0.1/goodies/code2art/?q=1'
+curl -I '127.0.0.1/bzick/nginx-red/?q=iddqd'
 
 HTTP/1.1 302 Moved Temporarily
-Location: https://code2art.jetbrains.com/?v3&q=1
+Location: https://github.com/bzick/nginx-red?type=code&q=iddqd
 ```

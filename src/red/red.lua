@@ -272,8 +272,11 @@ function red.try_rule(uri, lang, rule)
         ngx.redirect(to, 302)
         return true
     elseif rule.to_type == parsers.FORWARDING then
-        ngx.req.set_uri_args(query)
-        ngx.req.set_uri(to, false)
+        local frags = utils.split(to, "?")
+        if frags[2] then
+            ngx.req.set_uri_args(query)
+        end
+        ngx.req.set_uri(frags[1], false)
         return true
     end
     return false

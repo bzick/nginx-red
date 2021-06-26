@@ -1,56 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlrewrite>
   <rule>
-    <note>Create date: 16.04.2021</note>
+    <note>Some note</note>
     <from>^/search/$</from>
     <to type="permanent-redirect">/?s=full</to>
   </rule>
   <rule><!-- using query string condition -->
-    <note>Create date: 28.05.2018</note>
+    <note>Some note</note>
     <condition type="query-string">.*Keyword.*</condition>
-    <from>^/(decompiler|profiler|resharper|resharper-cpp)/documentation/(index.jsp)?$</from>
+    <from>^/(one|two|three)/documentation/(index.html)?$</from>
     <to>/help/$1/</to>
   </rule>
   <rule><!-- using query append -->
-    <note>Create date: 28.05.2018</note>
-    <from>^/(decompiler|profiler|resharper|resharper-cpp)/documentation/(index.jsp)?$</from>
+    <note>Some note</note>
+    <from>^/(one|two|three)/documentation/(index.html)?$</from>
     <to qsappend="false">/$1/documentation/documentation.html</to>
   </rule>
   <rule>
-    <note>Create date: 28.12.2017</note>
+    <note>Some note</note>
     <from>^/go/help/$</from>
     <to type="permanent-redirect">/help/go/</to>
   </rule>
   <rule>
-    <note>Update date: 04.11.2018 JS-11258</note>
-    <from>^/goodies/code2art/$</from>
-    <to>https://code2art.jetbrains.com/?v3</to>
+    <note>Some note</note>
+    <from>^/bzick/nginx-red/$</from>
+    <to>https://github.com/bzick/nginx-red?v2</to>
   </rule>
   <rule><!-- using placeholders in 'to' tag -->
-    <note>Create date: 15.12.2015; Reducing the number of allnews pages</note>
-    <from>^/allnews_([0-9]{4})\.jsp$</from>
-    <to type="permanent-redirect">/allnews.jsp?year=$1</to>
+    <note>Reducing the number of pages</note>
+    <from>^/all_([0-9]{4})\.jsp$</from>
+    <to type="permanent-redirect">/all.html?year=$1</to>
   </rule>
 
   <rule><!-- using languages and auto-lang-prefix -->
-    <note>Create date: 19.01.2021 - JS-13920</note>
-    <from languages="pt-pt">^/lp/devecosystem-2020/$</from>
-    <to auto-lang-prefix="false">/pt-br/lp/devecosystem-2020/</to>
+    <note>Some note</note>
+    <from languages="pt-pt">^/lp/2020/$</from>
+    <to auto-lang-prefix="false">/pt-br/lp/2020/</to>
   </rule>
   <rule><!-- temporary redirect -->
-    <note>Create date: 21.10.2020 - JS-10761</note>
-    <from>^/idea/promo/ultimate/$</from>
-    <to type="temporary-redirect">/idea/promo/</to>
+    <note>Some note</note>
+    <from>^/goto/promo/$</from>
+    <to type="temporary-redirect">/promo/2021</to>
   </rule>
   <rule><!-- using // -->
-    <note>Create date: 22.01.2016</note>
-    <from>^/clion/documentation/docs/CLion_ReferenceCard.pdf$</from>
-    <to>//resources.jetbrains.com/storage/products/clion/docs/CLion_ReferenceCard.pdf</to>
+    <note>Some note</note>
+    <from>^/nginx-red$</from>
+    <to>//github.com/bzick/nginx-red</to>
   </rule>
   <rule>
-    <note>Create date: 20.01.2021 - JS-14260</note>
-    <from languages="pt-pt">^/lp/mono/$</from>
-    <to auto-lang-prefix="false">/pt-br/lp/mono/</to>
+    <note>Some note</note>
+    <from languages="pt-pt">^/lp/animals/$</from>
+    <to auto-lang-prefix="false">/pt-br/lp/animals/</to>
   </rule>
 </urlrewrite>
 
