@@ -1,6 +1,10 @@
 local ngx   = ngx
 local utils = require("utils")
-local debug = os.getenv("RED_DEBUG") == "1"
+local red_debug = os.getenv("RED_DEBUG")
+local debug = false
+if red_debug and red_debug == "1" then
+    debug = true
+end
 
 --- Объект логгера
 local log = {}
