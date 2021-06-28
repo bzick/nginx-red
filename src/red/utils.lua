@@ -1,10 +1,9 @@
 local type = type
 local select = select
-local tostring = tostring
 local table = table
 local getmetatable = getmetatable
-local string = string
-local pairs = pairs
+local string, tostring = string, tostring
+local pairs, ipairs = pairs, ipairs
 local pcall = pcall
 --- Набор вспомогательных утилит
 local utils = {}
@@ -80,14 +79,14 @@ end
 --- @param str string
 --- @param delimiter string
 --- @return table
-function utils.split(str, delimiter)
+function utils.split(str, delimiter, plain)
     local result = { }
     local from  = 1
-    local delim_from, delim_to = string.find( str, delimiter, from  )
+    local delim_from, delim_to = string.find( str, delimiter, from, plain  )
     while delim_from do
         table.insert( result, string.sub( str, from , delim_from-1 ) )
         from  = delim_to + 1
-        delim_from, delim_to = string.find( str, delimiter, from  )
+        delim_from, delim_to = string.find( str, delimiter, from, plain  )
     end
     table.insert( result, string.sub( str, from  ) )
     return result
@@ -102,6 +101,47 @@ function utils.get_file_mtime(filename)
         return stats.change
     end
     return nil
+end
+
+--- Сканирует строку на наличие подстановки вида {cookie.rule_set}
+--- @param str string
+--- @return string
+--- @return table[]|nil если есть подстановки то вернёт их списком {{"cookie", "rule_set"}}
+function utils.scan_placeholders(str)
+    local matched = str:gmatch('(%b{})')
+    local args = {}
+    for w in matched do
+        w = w:sub(2, -2)
+        if w:find(".") then
+            table.insert(args, utils.split(w, ".", true))
+        end
+    end
+    if #args > 0 then
+        return args
+    else
+        return nil
+    end
+end
+
+--- Производит подстановку значений в строку
+--- @param tpl string строка с подстановками вида {cookie.rule_set}, {method}
+--- @param vars function[] таблица с геттерами значений vars.cookie("rule_set"), vars.method()
+--- @return string
+function utils.template(tpl, vars)
+    return (tpl:gsub('(%b{})', function(w)
+        w = w:sub(2, -2)
+        if w:find(".") then
+            local frags = utils.split(w, ".")
+            if vars[frags[1]] then
+                return vars[frags[1]](frags[2])
+            end
+        elseif vars[w] then
+            return vars[w]()
+        else
+            return "{" .. w .. "}"
+        end
+    end))
+
 end
 
 return utils

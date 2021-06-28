@@ -32,15 +32,36 @@ function parsers.langs_parser(xml)
     local h = handler:new()
     local parser = xml2lua.parser(h)
     parser:parse(xml)
+    local langs = {
+        langs = nil,
+        prefix = nil
+    }
 
-    if h.root                    -- есть рутовый элемент
-        and h.root.langs         -- есть тег <langs>
-        and h.root.langs.lang    -- есть "массив" из <lang>
-        and type(h.root.langs.lang) == "table" then
+    log.debug("XML config", h.root)
 
-        local langs = {}
-        for _, lang in pairs(h.root.langs.lang) do
-            langs[lang] = true
+    if h.root and h.root.langs then -- есть тег <langs>
+        if h.root.langs.lang and type(h.root.langs.lang) == "table"  then   -- есть "массив" из <lang>
+            langs.langs = {}
+            for _, lang in pairs(h.root.langs.lang) do
+                langs.langs[lang] = true
+            end
+        end
+        if h.root.langs.prefix and type(h.root.langs.prefix) == "table" then
+            langs.prefix = {}
+            for _, prefix in pairs(h.root.langs.prefix) do
+                -- <prefix type="unlocalized">/store</prefix>:
+                -- prefix = {
+                --   _attr = {
+                --     type = (string) unlocalized
+                --   }
+                --   [1] = (string) /store
+                -- }
+                if type(prefix) == "table" and prefix._attr["type"] and prefix._attr["type"] == "unlocalized" then
+                    table.insert(langs.prefix, prefix[1])
+                else
+                    log.warn("Invalid prefix rule", prefix)
+                end
+            end
         end
         return langs
     else
@@ -102,7 +123,6 @@ function parsers.build_rule(v)
     rule.to_has_query = false
     rule.auto_lang_prefix = true
     rule.query_append = true
-    rule.case_sensitive = false
     rule.to_type = parsers.REDIRECT_TEMP
     -- обрабатываем различные варианты тега <to ...>...</to>. Возможные варинаты:
     -- <to>/legal/docs/youtrack/youtrack_incloud.html</to>
@@ -144,7 +164,6 @@ function parsers.build_rule(v)
     -- обрабатываем различные варианты тега <from ...>...</from>. Возможные варинаты:
     -- <from>^/search/$</from>
     -- <from casesensitive="true">^/(dotTrace|dottrace).*$</from>
-    -- <from languages="pt-pt">^/lp/devecosystem-2020/$</from>
     if type(v.from) == "string" then -- тег без атрибутов
         rule.from = v.from
     elseif type(v.from) == "table" and v.from[1] then -- тег с атрибутами
@@ -152,14 +171,6 @@ function parsers.build_rule(v)
         if v.from._attr then
             if v.from._attr["casesensitive"] == "true" then -- флаг чувстивтельности к регистру <from casesensitive="true">
                 rule.opts = nil
-            end
-            if v.from._attr["languages"] then -- есть условия на языки <from languages="pt-pt">
-                for _, l in ipairs(utils.split(v.from._attr["languages"], ", ")) do
-                    if not rule.languages then
-                        rule.languages = {}
-                    end
-                    rule.languages[l] = true -- складываем языки хеш-таблицей, что бы потом быстрее искать
-                end
             end
         end
     else

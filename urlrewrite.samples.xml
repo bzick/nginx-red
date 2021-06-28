@@ -34,8 +34,8 @@
 
   <rule><!-- using languages and auto-lang-prefix -->
     <note>Some note</note>
-    <from languages="pt-pt">^/lp/2020/$</from>
-    <to auto-lang-prefix="false">/pt-br/lp/2020/</to>
+    <from>^/pt-pt/lp/2020/$</from>
+    <to>/pt-br/lp/2020/</to>
   </rule>
   <rule><!-- temporary redirect -->
     <note>Some note</note>
@@ -49,8 +49,12 @@
   </rule>
   <rule>
     <note>Some note</note>
-    <from languages="pt-pt">^/lp/animals/$</from>
+    <from>^/lp/animals/$</from>
     <to auto-lang-prefix="false">/pt-br/lp/animals/</to>
+  </rule>
+  <rule> <!-- Check lang prefixes (unlocalized) -->
+    <from>^/store/make</from>
+    <to>/store/order</to>
   </rule>
 </urlrewrite>
 

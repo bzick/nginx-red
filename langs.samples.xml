@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <langs>
-    <lang>en-us</lang>
     <lang>ru-ru</lang>
     <lang>zh-cn</lang>
     <lang>ja-jp</lang>
@@ -10,5 +9,6 @@
     <lang>ko-kr</lang>
     <lang>pt-br</lang>
     <lang>tl-aa</lang>
-    <lang>pt-pt</lang>
+    <prefix type="unlocalized">/store</prefix>
+    <prefix type="unlocalized">/help</prefix>
 </langs>

@@ -8,8 +8,8 @@ local utils     = require("utils")
 local log       = require("log")
 local parsers   = require("parsers")
 local cache = ngx.shared["cache"] or nil
-local rules_path    = os.getenv("RED_RULES_PATH")
-local langs_path    = os.getenv("RED_LANGS_PATH")
+local rules_path    = os.getenv("RED_RULES_PATH") or ""
+local langs_path    = os.getenv("RED_LANGS_PATH") or ""
 local timeout       = tonumber(os.getenv("RED_RELOAD_TIMEOUT")) or 10
 --local stats_path    = os.getenv("RED_STATS_PATH")
 --local stats_timeout = tonumber(os.getenv("RED_STATS_TIMEOUT"))
@@ -19,20 +19,20 @@ if wait_time >= timeout then
     timeout = timeout / 2
 end
 
-
---- @class red.rule псевдо-тип нужен для хинтов
---- @field note string
---- @field from string
---- @field opts string
---- @field to string
---- @field to_type string
+--- @class red.rule псевдо-тип нужен для хинтов по правилам
+--- @field from string правило совпадения URI, регулярка
+--- @field opts string флаги регулярки, обычно это "i"
+--- @field to string правела замещение URI для редиректа или forwarding
+--- @field to_type string действие при совпадении правила: редирект или forwarding
 --- @field to_has_query boolean to поле имеет параметры запроса (имеет ?)
 --- @field cond string
 --- @field cond_type string
 --- @field auto_lang_prefix boolean
---- @field case_sensitive boolean
---- @field languages table языки, которые вначале
 --- @field query_append boolean прикреплять параметры запроса (после ?) к редиректу/реврайту
+
+--- @class red.config псевдо-тип нужен для хинтов по настройкам
+--- @field langs string<string,boolean> хеш-таблица доступных языков
+--- @field prefix string[] массив префиксов, которые должны откинуть свой префикс языка.
 
 local CACHE_CHECK_TIMEOUT = 5
 local CACHE_KEY_WATCHER_LOCK = "watcher:lock"
@@ -45,11 +45,13 @@ local CACHE_KEY_LANGS_DATA = "langs:data"
 --- @class red
 --- @field rules red.rule[] список правил
 --- @field cache userdata nginx кеш
+--- @field config red.config настройки поведения
 --- @field langs table<string,boolean> хеш-таблица языков
 --- @field rules_modified number время последнего обновляения кеша правил (из диска или словаря)
 --- @field langs_modified number время последнего обновляения кеша языка (из диска или словаря)
 local red = {
     rules = { },
+    config = { },
     langs = { },
     cache = cache,
     cache_modified = 0,
@@ -108,12 +110,13 @@ function red.reload()
             red.rules = rules
         end
         -- Потом обновляем кеш языков
-        local langs, langs_err = red.load_to_cache(langs_path, parsers.langs_parser, CACHE_KEY_LANGS_MODIFIED, CACHE_KEY_LANGS_DATA)
-        if langs_err then
-            log.err("Failed to load languages from `" .. (langs_path or "none") .. "`: " .. langs_err)
-        elseif langs then
+        local config, config_err = red.load_to_cache(langs_path, parsers.langs_parser, CACHE_KEY_LANGS_MODIFIED, CACHE_KEY_LANGS_DATA)
+        if config_err then
+            log.err("Failed to load languages from `" .. (langs_path or "none") .. "`: " .. config_err)
+        elseif config then
             cache_is_modified = true
-            red.langs = langs
+            red.config = config
+            log.debug("config", config)
         end
         if cache_is_modified then
             red.cache:set(CACHE_KEY_MODIFIED, ngx.now())
@@ -147,7 +150,7 @@ function red.load_to_cache(path, parser, modified_lock, data_lock)
         if not file then
             return nil, "failed to open file " .. path .. ": " .. tostring(err or "no error")
         end
-        local data = file:read("*all") -- вычитваем всё из файла специальным флагом
+        local data = file:read("*all") -- вычитываем всё из файла специальным флагом
         file:close()
         if data == "" then
             return nil, "file ".. tostring(path) .. " is empty"
@@ -187,10 +190,10 @@ function red.check_cache()
             end
             data = red.cache:get(CACHE_KEY_LANGS_DATA) -- забираем кеш языка
             if data then
-                local langs = msgpack.unpack(data)
-                if langs then
-                    red.langs = langs
-                    log.debug("languages reloaded from cache")
+                local config = msgpack.unpack(data)
+                if config then
+                    red.config = config
+                    log.debug("config reloaded from cache")
                 end
             end
             red.cache_modified = cache_modified
@@ -210,7 +213,7 @@ function red.route()
     -- определяем язык в URL, если есть и забираем кусок URL без языка в начале
     if uri:len() > 6 and uri:sub(7,7) == "/" then
         lang = uri:sub(2, 6)
-        if red.langs[ lang ] then
+        if red.config.langs[ lang ] then
             uri = uri:sub(7)
         else
             lang = nil
@@ -237,16 +240,10 @@ function red.try_rule(uri, lang, rule)
     local to, n = ngx.re.gsub(uri, rule.from, rule.to, rule.opts)
     -- сработало правило, нужно определиться с действиями
     -- но перед эти надо проверить если ли улсовия на язык у правила и они совпадают с полученым lang
-    if n == 0 then -- нет совпадения по rule.from
+    if n == 0 or not to then -- нет совпадения по rule.from
         return false
     end
     log.debug("Rule matched", rule)
-    if rule.languages and not lang then -- есть правила по языку, но запрос не содержит языка
-        return false
-    end
-    if rule.languages and not rule.languages[lang] then -- есть правила по языку, но запрос имеет другой язык
-        return false
-    end
     local query = ngx.var.args -- параметры запроса, всё после `?`, строкой
     if rule.cond and rule.cond_type == parsers.COND_QUERY_STRING then -- проверка condition
         local cond_check = ngx.re.match(query, rule.cond, "i")
@@ -254,6 +251,16 @@ function red.try_rule(uri, lang, rule)
             return false
         end
     end
+    if lang then
+        -- если задан языковый префикс, проверяем префиксы на наличие unlocalized адресов
+        for _, p in ipairs(red.config.prefix) do
+            if to:find(p, 1, true) == 1 then
+                rule.auto_lang_prefix = false
+                break
+            end
+        end
+    end
+
     if rule.auto_lang_prefix and lang then -- прикрепляем обратно языковый префикс, если он был в запросе
         to = "/" .. lang .. to
     end
