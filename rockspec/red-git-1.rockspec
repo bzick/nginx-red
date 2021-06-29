@@ -7,10 +7,10 @@ description = {
     summary = "Exec redirect rules",
 }
 dependencies = {
-    "lua-resty-core >= 0.1.17",
     "xml2lua >= 1.4",
     "luafilesystem-ffi",
-    "lua-messagepack == 0.5.2-1"
+    "lua-messagepack == 0.5.2-1",
+    "lua-resty-cookie"
 }
 build = {
     type = "builtin",

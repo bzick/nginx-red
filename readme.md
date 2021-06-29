@@ -49,7 +49,7 @@ env RED_RELOAD_TIMEOUT=10;
 
 * `RED_DEBUG` — включает отладку у red. `0` или `1`
 * `RED_RULES_PATH` — путь до правил в [формате xml](./urlrewrite.samples.xml).
-* `RED_LANGS_PATH` — путь до языков в [формате xml](./langs.samples.xml).
+* `RED_LANGS_PATH` — путь до языков в [формате xml](config.samples.xml).
 * `RED_RELOAD_TIMEOUT` — интервал проверки файлов правил и языков на изменение, что бы загрузить свежую версию. Секунды.
 
 Директивы настройки lua:
@@ -78,17 +78,17 @@ env RED_RELOAD_TIMEOUT=10;
 Зависимости red:
 
 ```bash
-luarocks install --tree ./src/vendor --no-doc --no-manifest --only-deps ./rockspec/red-git-1.rockspec
+luarocks install --lua-dir=/usr/local/opt/lua@5.1 --tree ./src/vendor --no-doc --no-manifest --only-deps ./rockspec/red-git-1.rockspec
 ```
 
 Часть зависимостей не указаны в списке зависмостей, так как они сильно завязаны на версию `nginx` и модуль `lua-nginx-module`
 Обновление `resty-core`, версия зависит от `lua-nginx-module`.
 ```bash
-luarocks install  --lua-dir=/usr/local/opt/lua@5.1 --tree ./src/vendor --no-doc --no-manifest ./rockspec/lua-resty-core-0.1.21-1.rockspec
+luarocks install --lua-dir=/usr/local/opt/lua@5.1 --tree ./src/vendor --no-doc --no-manifest ./rockspec/lua-resty-core-0.1.21-1.rockspec
 ```
 Обновление `lua-resty-lrucache`, версия зависит от `resty-core`
 ```bash
-luarocks install  --lua-dir=/usr/local/opt/lua@5.1 --tree ./src/vendor --no-doc --no-manifest ./rockspec/lua-resty-lrucache-0.10-1.rockspec
+luarocks install --lua-dir=/usr/local/opt/lua@5.1 --tree ./src/vendor --no-doc --no-manifest ./rockspec/lua-resty-lrucache-0.10-1.rockspec
 ```
 Все зависимости должны быть git.
 
@@ -106,4 +106,15 @@ curl -I '127.0.0.1/bzick/nginx-red/?q=iddqd'
 
 HTTP/1.1 302 Moved Temporarily
 Location: https://github.com/bzick/nginx-red?type=code&q=iddqd
+```
+
+```
+curl -I '127.0.0.1/bzick/nginx-red/?q=iddqd'
+
+HTTP/1.1 302 Moved Temporarily
+Location: https://github.com/bzick/nginx-red?type=code&q=iddqd
+```
+
+```
+curl -I --cookie "test=samples" '127.0.0.1/search/?q=1'
 ```

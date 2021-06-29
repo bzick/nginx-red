@@ -5,6 +5,17 @@ local getmetatable = getmetatable
 local string, tostring = string, tostring
 local pairs, ipairs = pairs, ipairs
 local pcall = pcall
+local cookie = require("resty.cookie")
+
+local placehoders = {}
+
+function placehoders.cookie(name)
+    if not name then
+        return nil
+    end
+    return cookie:new():get(name)
+end
+
 --- Набор вспомогательных утилит
 local utils = {}
 local lfs = require("lfs")
@@ -106,11 +117,10 @@ end
 --- Сканирует строку на наличие подстановки вида {cookie.rule_set}
 --- @param str string
 --- @return string
---- @return table[]|nil если есть подстановки то вернёт их списком {{"cookie", "rule_set"}}
+--- @return table[]|nil если есть подстановки то вернёт их списком {{"cookie", "rule_set"}} если их нет то nil
 function utils.scan_placeholders(str)
-    local matched = str:gmatch('(%b{})')
     local args = {}
-    for w in matched do
+    for w in str:gmatch('(%b{})') do
         w = w:sub(2, -2)
         if w:find(".") then
             table.insert(args, utils.split(w, ".", true))
@@ -123,25 +133,31 @@ function utils.scan_placeholders(str)
     end
 end
 
---- Производит подстановку значений в строку
+--- Производит подстановку значений в строку из объекта placehoders
 --- @param tpl string строка с подстановками вида {cookie.rule_set}, {method}
---- @param vars function[] таблица с геттерами значений vars.cookie("rule_set"), vars.method()
 --- @return string
-function utils.template(tpl, vars)
+function utils.template(tpl)
     return (tpl:gsub('(%b{})', function(w)
         w = w:sub(2, -2)
         if w:find(".") then
-            local frags = utils.split(w, ".")
-            if vars[frags[1]] then
-                return vars[frags[1]](frags[2])
+            local frags = utils.split(w, ".", true)
+            if placehoders[frags[1]] and frags[2] then
+                return placehoders[frags[1]](frags[2])
             end
-        elseif vars[w] then
-            return vars[w]()
+        elseif placehoders[w] then
+            return placehoders[w]()
         else
             return "{" .. w .. "}"
         end
     end))
 
+end
+
+--- Возвращает директорию от пути
+--- @param path string
+--- @return string
+function utils.basedir(path)
+    return path:match("(.*/)")
 end
 
 return utils

@@ -3,6 +3,7 @@ local pairs = pairs
 local ipairs = ipairs
 local tostring = tostring
 local table = table
+local tonumber = tonumber
 local ngx   = ngx
 local log       = require("log")
 local xml2lua   = require("xml2lua")
@@ -25,30 +26,36 @@ local parsers = {
 
 --- Парсит список допустимых для URL языки.
 --- Метод не использует nginx api, и, как следствие, можно вызвать в любом месте.
---- <langs><lang>ru-ru</lang></langs>
 --- @param xml string xml данные языков вида
 --- @return table|nil в случае успеха
-function parsers.langs_parser(xml)
+function parsers.config_parser(xml)
     local h = handler:new()
     local parser = xml2lua.parser(h)
     parser:parse(xml)
-    local langs = {
+    --- @type red.config
+    local config = {
         langs = nil,
-        prefix = nil
+        prefix = nil,
+        rules = {}
     }
 
-    log.debug("XML config", h.root)
+    -- Нужно убедиться что конфиг распарсился
+    if not h.root or not h.root.urlrewrite then
+        log.warn("Invalid XML config")
+        return
+    end
+    local root = h.root.urlrewrite
 
-    if h.root and h.root.langs then -- есть тег <langs>
-        if h.root.langs.lang and type(h.root.langs.lang) == "table"  then   -- есть "массив" из <lang>
-            langs.langs = {}
-            for _, lang in pairs(h.root.langs.lang) do
-                langs.langs[lang] = true
+    if root.langs then -- есть тег <langs>
+        if root.langs.lang and type(root.langs.lang) == "table"  then   -- есть "массив" из <lang>
+            config.langs = {}
+            for _, lang in pairs(root.langs.lang) do
+                config.langs[lang] = true
             end
         end
-        if h.root.langs.prefix and type(h.root.langs.prefix) == "table" then
-            langs.prefix = {}
-            for _, prefix in pairs(h.root.langs.prefix) do
+        if root.langs.prefix and type(root.langs.prefix) == "table" then
+            config.prefix = {}
+            for _, prefix in pairs(root.langs.prefix) do
                 -- <prefix type="unlocalized">/store</prefix>:
                 -- prefix = {
                 --   _attr = {
@@ -57,56 +64,51 @@ function parsers.langs_parser(xml)
                 --   [1] = (string) /store
                 -- }
                 if type(prefix) == "table" and prefix._attr["type"] and prefix._attr["type"] == "unlocalized" then
-                    table.insert(langs.prefix, prefix[1])
+                    table.insert(config.prefix, prefix[1])
                 else
                     log.warn("Invalid prefix rule", prefix)
                 end
             end
         end
-        return langs
-    else
-        log.warn("failed to parse XML of languages")
     end
-end
-
---- Загружает правила редиректов из XML файла.
---- Метод не использует nginx api, и, как следствие, можно вызвать в любом месте.
---- @param xml string XML с правилами
---- @return table
-function parsers.rules_parser(xml)
-    local h = handler:new()
-    local parser = xml2lua.parser(h)
-    parser:parse(xml)
-    xml = nil -- высвобождем память
-    -- проверяем что xml вообще распарсился и в нём есть массив <rule>
-    -- handler.root — является корневым элементов всего xml. Пример xml:
-    -- <?xml version="1.0" encoding="UTF-8"?>
+    if root.config and type(root.config) == "table" then
+        if root.config._attr and root.config._attr["param"] then -- это всего одна запись <param>
+            parsers.config_param(config, root.config._attr["param"], root.config[1])
+        else -- иначе это массив параметров
+            for _, c in ipairs(root.config) do
+                parsers.config_param(config, c._attr["param"], c[1])
+            end
+        end
+    end
+    -- Список правил
     -- <urlrewrite>
     --  <rule>
     --    <note>Create date: 16.04.2021</note>
     --    <from>^/search/$</from>
     --    <to type="permanent-redirect">/?s=full</to>
     --  </rule>
-    --  ...
-    -- </urlrewrite>
-    if h.root                         -- есть рутовый элемент
-            and h.root.urlrewrite         -- есть тег <urlrewrite>
-            and h.root.urlrewrite.rule    -- есть "массив" из <rule>
-            and type(h.root.urlrewrite.rule) == "table" then
-
-        local rules = {}
-
-        for _, v in pairs(h.root.urlrewrite.rule) do
+    if root.rule and type(root.rule) == "table" then
+        for _, v in pairs(root.rule) do
             local rule, err = parsers.build_rule(v)
             if err then
                 log.warn(tostring(err) .. " Skip rule", v)
             else
-                table.insert(rules, rule)
+                table.insert(config.rules, rule)
             end
         end
-        return rules
-    else
-        log.warn("failed to parse XML of rules")
+    end
+
+    return config
+end
+
+--- @param config red.config
+--- @param param string
+--- @param value string
+function parsers.config_param(config, param, value)
+    if param == "rules" then
+        config.rules_path = value
+    elseif param == "reload-timeout" then
+        config.check_timeout = tonumber(value) or 10
     end
 end
 
@@ -125,11 +127,11 @@ function parsers.build_rule(v)
     rule.query_append = true
     rule.to_type = parsers.REDIRECT_TEMP
     -- обрабатываем различные варианты тега <to ...>...</to>. Возможные варинаты:
-    -- <to>/legal/docs/youtrack/youtrack_incloud.html</to>
-    -- <to type="permanent-redirect">/company/customers/experience/</to>
-    -- <to type="temporary-redirect">/products/</to>
-    -- <to auto-lang-prefix="false">/pt-br/lp/devecosystem-2020/</to>
-    -- <to qsappend="false">/$1/documentation/documentation.html</to>
+    -- <to>/some/path.html</to>
+    -- <to type="permanent-redirect">/some/path.html</to>
+    -- <to type="temporary-redirect">/some/path.html</to>
+    -- <to auto-lang-prefix="false">/pt-br//some/path.html</to>
+    -- <to qsappend="false">/$1/path.html</to>
     if type(v.to) == "string" then -- тег без атрибутов
         rule.to = v.to
     elseif type(v.to) == "table" and v.to[1] then -- тег с атрибутами
@@ -162,8 +164,8 @@ function parsers.build_rule(v)
     end
 
     -- обрабатываем различные варианты тега <from ...>...</from>. Возможные варинаты:
-    -- <from>^/search/$</from>
-    -- <from casesensitive="true">^/(dotTrace|dottrace).*$</from>
+    -- <from>^/some/path.html$</from>
+    -- <from casesensitive="true">^/some/.*$</from>
     if type(v.from) == "string" then -- тег без атрибутов
         rule.from = v.from
     elseif type(v.from) == "table" and v.from[1] then -- тег с атрибутами

@@ -8,16 +8,8 @@ local utils     = require("utils")
 local log       = require("log")
 local parsers   = require("parsers")
 local cache = ngx.shared["cache"] or nil
-local rules_path    = os.getenv("RED_RULES_PATH") or ""
-local langs_path    = os.getenv("RED_LANGS_PATH") or ""
-local timeout       = tonumber(os.getenv("RED_RELOAD_TIMEOUT")) or 10
---local stats_path    = os.getenv("RED_STATS_PATH")
---local stats_timeout = tonumber(os.getenv("RED_STATS_TIMEOUT"))
-local lock_ttl      = timeout / 2
-local wait_time     = 1
-if wait_time >= timeout then
-    timeout = timeout / 2
-end
+local config_path = os.getenv("RED_CONFIG_PATH") or ""
+local root_path   = utils.basedir(config_path) -- путь относительно конфига, со слешом на конце
 
 --- @class red.rule псевдо-тип нужен для хинтов по правилам
 --- @field from string правило совпадения URI, регулярка
@@ -31,33 +23,40 @@ end
 --- @field query_append boolean прикреплять параметры запроса (после ?) к редиректу/реврайту
 
 --- @class red.config псевдо-тип нужен для хинтов по настройкам
---- @field langs string<string,boolean> хеш-таблица доступных языков
+--- @field langs string<string,boolean> хеш-таблица допустимых языков префиксов
 --- @field prefix string[] массив префиксов, которые должны откинуть свой префикс языка.
+--- @field rules_path string дополнительный файл откуда брать другие настройки, правила
+--- @field dynamic_mode boolean импорт включает в себя динамические подстановки
+--- @field check_timeout number как часто проверять изменения файлов
+--- @field rules red.rule[] список правил
 
 local CACHE_CHECK_TIMEOUT = 5
 local CACHE_KEY_WATCHER_LOCK = "watcher:lock"
 local CACHE_KEY_RULES_MODIFIED = "rules:mtime"
 local CACHE_KEY_MODIFIED = "cache:mtime"
 local CACHE_KEY_RULES_DATA = "rules:data"
-local CACHE_KEY_LANGS_MODIFIED = "langs:mtime"
-local CACHE_KEY_LANGS_DATA = "langs:data"
+local CACHE_KEY_CONFIG_MODIFIED = "config:mtime"
+local CACHE_KEY_CONFIG_DATA = "config:data"
 
 --- @class red
 --- @field rules red.rule[] список правил
 --- @field cache userdata nginx кеш
 --- @field config red.config настройки поведения
 --- @field langs table<string,boolean> хеш-таблица языков
---- @field rules_modified number время последнего обновляения кеша правил (из диска или словаря)
---- @field langs_modified number время последнего обновляения кеша языка (из диска или словаря)
+--- @field rules_modified number время последнего обновления кеша правил (из диска или словаря)
+--- @field langs_modified number время последнего обновления кеша языка (из диска или словаря)
 local red = {
     rules = { },
-    config = { },
-    langs = { },
+    config = {
+        langs = {},
+        prefix = nil,
+        dynamic_mode = false,
+        rules_path = nil,
+        check_timeout = 10
+    },
     cache = cache,
     cache_modified = 0,
     cache_checked = 0,
-    rules_modified = 0,
-    langs_modified = 0,
 }
 
 --- Запускает таймер, который обновляет язки и правила с диска, если файлы поменялись.
@@ -66,17 +65,46 @@ function red.start_file_watcher()
     -- файл будет загружать всегда самый первый воркер с id 0, он всегда будет существовать
     -- если воркер будет убит, master сам поднимет новый воркер с тем же id.
     if ngx.worker.id() == nil then -- очень старые nginx (nginx < 1.9.1) версии не имели фиксированные id воркеров.
-        local _, err = ngx.timer.every(timeout, red.reload)
+        local _, err = ngx.timer.every(red.config.check_timeout, red.reload)
         if err then
             log.err("Failed to setup file watcher: " .. tostring(err))
         end
     else
         if ngx.worker.id() == 0 then
-            local _, err = ngx.timer.every(timeout, red.reload)
+            local _, err = ngx.timer.every(red.config.check_timeout, red.reload)
             if err then
                 log.err("Failed to setup file watcher: " .. tostring(err))
             end
         end
+    end
+end
+
+--- @param config red.config
+function red.set_config(config)
+    log.debug("Rewrite config with", config)
+    red.config.langs = config.langs
+    red.config.prefix = config.prefix
+    red.config.rules = config.rules
+    if config.rules_path then
+        if config.rules_path:sub(1,1) == "/" then -- тут у нас абсолютный путь
+            red.config.rules_path = config.rules_path
+        else
+            red.config.rules_path = root_path .. config.rules_path
+        end
+    else
+        red.config.rules_path = nil
+    end
+
+    -- в конфиге был задан путь до правил. нужно проверить что является ли он динамическим.
+    -- Договоримся что если правила загружаются по пути то вложенные правила  конфига выкидываем.
+    if red.config.rules_path then
+        local placeholders = utils.scan_placeholders(red.config.rules_path)
+        if placeholders then -- в пути есть подстановки, нужно переходить в динамический режим
+            red.config.dynamic_mode = true
+        end
+    else
+        red.rules = red.config.rules or {}
+        red.config.dynamic_mode = false -- на случай если до этого был динамический режим, теперь-то нет так как пути теперь нету
     end
 end
 
@@ -95,36 +123,44 @@ function red.reload()
     if not red.cache then
         return
     end
+    local lock_ttl      = red.config.check_timeout / 2
+    local wait_time     = 1
+    if wait_time >= red.config.check_timeout then
+        wait_time = red.config.check_timeout / 2
+    end
     -- Выставляем блокировку на эксклюзивный доступ к файловой системе.
     -- Блокировка ставится на половину времени от timeout что бы следующий воркер уже мог взяться за дело.
     local ok = red.cache:add(CACHE_KEY_WATCHER_LOCK, 1, lock_ttl)
     if ok then
         local cache_is_modified = false
-        -- так как получили эксклюзивную блокировку то начинаем обновление
-        -- Сначала обновляем кеш правил
-        local rules, rules_err = red.load_to_cache(rules_path, parsers.rules_parser, CACHE_KEY_RULES_MODIFIED, CACHE_KEY_RULES_DATA)
-        if rules_err then
-            log.err("Failed to load rules from " .. (rules_path or "none") .. ": " .. rules_err)
-        elseif rules then
-            cache_is_modified = true
-            red.rules = rules
-        end
-        -- Потом обновляем кеш языков
-        local config, config_err = red.load_to_cache(langs_path, parsers.langs_parser, CACHE_KEY_LANGS_MODIFIED, CACHE_KEY_LANGS_DATA)
+        -- @type red.config
+        local config, config_err = red.load_to_cache(config_path, parsers.config_parser, CACHE_KEY_CONFIG_MODIFIED, CACHE_KEY_CONFIG_DATA)
         if config_err then
-            log.err("Failed to load languages from `" .. (langs_path or "none") .. "`: " .. config_err)
+            log.err("Failed to load config from `" .. (config_path or "none") .. "`: " .. config_err)
         elseif config then
             cache_is_modified = true
-            red.config = config
-            log.debug("config", config)
+            red.set_config(config)
         end
+
+        -- если есть путь и он без подстановок то правило по нему можно загрузить
+        if red.config.rules_path and not red.config.dynamic_mode then
+            -- @type red.rules
+            local rules_config, rules_err = red.load_to_cache(red.config.rules_path, parsers.config_parser, CACHE_KEY_RULES_MODIFIED, CACHE_KEY_RULES_DATA)
+            if rules_err then
+                log.err("Failed to load rules from " .. (red.config.rules_path or "none") .. ": " .. rules_err)
+            elseif rules_config then
+                cache_is_modified = true
+                red.rules = rules_config.rules
+            end
+        end
+
         if cache_is_modified then
             red.cache:set(CACHE_KEY_MODIFIED, ngx.now())
-            log.debug("rules/langs reloaded from fs")
+            log.debug("config reloaded from fs", red.config, red.rules)
         else
-            log.debug("rules/langs not modified")
+            log.debug("config not modified")
         end
-        -- Не будем зачищать CACHE_KEY_WATCHER_LOCK что бы другие воркеры не пытались обновить данные так рано.
+        -- Не будем зачищать CACHE_KEY_WATCHER_LOCK что бы другие воркеры (если они есть) не пытались обновить данные так рано.
         -- Особенно проблема актуальна когда nginx работает на одном CPU ядре и таймеры срабатывают у всех последовательно.
     end
 end
@@ -145,6 +181,7 @@ function red.load_to_cache(path, parser, modified_lock, data_lock)
     -- Обновляем кеш если одно из двух:
     -- 1) cache_mtime равен nil — это первый запуск, когда кеша ещё нет => кеш надо создать
     -- 2) когда mtime файла и mtime кеша не совпадают => обновился файл => кеш надо обновить
+
     if not cache_mtime or mtime ~= cache_mtime then
         local file, err = io.open(path, "r")
         if not file then
@@ -171,34 +208,69 @@ function red.load_to_cache(path, parser, modified_lock, data_lock)
     end
 end
 
---- Проверяет есть ли обновление кеша, если кеш обновился то выгружает новые правила и языки
---- Метод работает только со памятью nginx и является очень производительным.
+--- Возвращает список правил по которым надо проверить URL
+--- Метод работает в двух режимах: динамический и статический.
+--- Вид режима зависит от того есть ли подстановки в пути до правил в конифге.
+--- 1) Динамический режим не очень быстрый так как каждый раз проверяет кеши
+--- и если данных там нет то прямо в методе загружает правила с файловой системы,
+--- что негативно сказывается на производительности.
+--- 2) Статичный же режим наоборот - самый производительный.
+--- В этом режиме проверяется есть ли обновление кеша, если кеш обновился то выгружает новые правила и языки из кеша,
+--- не трогая файловую систему. Метод работает только со памятью nginx и является очень производительным.
 --- Так же метод не будет проверять кеш если буквально недавно проверял,
---- расстояние между проверками сосатавляет CACHE_CHECK_TIMEOUT
-function red.check_cache()
-    if red.cache_checked + CACHE_CHECK_TIMEOUT < ngx.now() then -- проверям как давно проверяли кеш
-        local cache_modified = red.cache:get(CACHE_KEY_MODIFIED)  -- получаем последнее изменение кеша
-        if not red.cache_modified or red.cache_modified ~= cache_modified then -- сверяемся были ли изменения в кеше
-            local data
-            data = red.cache:get(CACHE_KEY_RULES_DATA) -- забираем кеш правил
+--- расстояние между проверками составляет CACHE_CHECK_TIMEOUT
+--- @return red.rule[]
+function red.get_rules()
+    if red.config.dynamic_mode then
+        log.debug("Using slow dynamic mode for rules loading")
+        -- в случае динамического пути нам нужно:
+        -- 1) вычислить новый путь
+        local path = utils.template(red.config.rules_path)
+        local key_modified = CACHE_KEY_RULES_MODIFIED .. ":" .. path
+        local key_data = CACHE_KEY_RULES_DATA .. ":" .. path
+        -- 2) загрузить в кеш правила. в кеш загрузятся правила только если нет их в кеше или файл изменился.
+        --    если были изменения кеша то мы получим новые данные сразу.
+        local config, err = red.load_to_cache(path, parsers.config_parser, key_modified, key_data)
+        if err then
+            log.err("Failed to load config from `" .. (path or "none") .. "`: " .. err)
+        elseif config.rules then
+            return config.rules
+        else
+            -- 3) если загрузка в кеш ничего не дала - значит в кеше уже актуальные данные, забираем из кеша
+            local data = red.cache:get(key_data)
             if data then
-                local rules = msgpack.unpack(data)
-                if rules then
-                    red.rules = rules
-                    log.debug("rules reloaded from cache")
-                end
+                return msgpack.unpack(data) or {}
             end
-            data = red.cache:get(CACHE_KEY_LANGS_DATA) -- забираем кеш языка
-            if data then
-                local config = msgpack.unpack(data)
-                if config then
-                    red.config = config
-                    log.debug("config reloaded from cache")
-                end
-            end
-            red.cache_modified = cache_modified
         end
-        red.cache_checked = ngx.now()
+    else
+        log.debug("Using fast static mode")
+        -- мы работаем без динамики, можем кешировать прямо в память.
+        -- но что бы не терибить часто память будем делать проверять кеш только периодично.
+        if red.cache_checked + CACHE_CHECK_TIMEOUT < ngx.now() then -- проверям как давно проверяли кеш
+            local cache_modified = red.cache:get(CACHE_KEY_MODIFIED)  -- получаем последнее изменение кеша
+            if not red.cache_modified or red.cache_modified ~= cache_modified then -- сверяемся были ли изменения в кеше
+                local data
+                data = red.cache:get(CACHE_KEY_RULES_DATA) -- забираем кеш правил
+                if data then
+                    local config = msgpack.unpack(data)
+                    if config and config.rules then
+                        red.rules = config.rules
+                        log.debug("rules reloaded from cache")
+                    end
+                end
+                data = red.cache:get(CACHE_KEY_CONFIG_DATA) -- забираем кеш языка
+                if data then
+                    local config = msgpack.unpack(data)
+                    if config then
+                        red.set_config(config)
+                        log.debug("config reloaded from cache")
+                    end
+                end
+                red.cache_modified = cache_modified
+            end
+            red.cache_checked = ngx.now()
+        end
+        return red.rules
     end
 end
 
@@ -209,7 +281,11 @@ function red.route()
     if uri == "/" then
         return
     end
-    red.check_cache()
+    local rules = red.get_rules()
+    if not rules then
+        log.warn("No one rules loaded")
+        return
+    end
     -- определяем язык в URL, если есть и забираем кусок URL без языка в начале
     if uri:len() > 6 and uri:sub(7,7) == "/" then
         lang = uri:sub(2, 6)
@@ -219,9 +295,8 @@ function red.route()
             lang = nil
         end
     end
-
     --- нужно перебрать каждое правило и попробовать применить к текущему uri
-    for _, rule in ipairs(red.rules) do
+    for _, rule in ipairs(rules) do
         if red.try_rule(uri, lang, rule) then
             return
         end
