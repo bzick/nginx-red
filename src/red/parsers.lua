@@ -9,7 +9,7 @@ local log       = require("log")
 local xml2lua   = require("xml2lua")
 local handler = require("xmlhandler.tree")
 local utils     = require("utils")
-
+local varset     = require("varset")
 
 --- @class red.parsers
 --- Набор парсеров для разбора языков и правил редиректов.
@@ -36,7 +36,8 @@ function parsers.config_parser(xml)
     local config = {
         langs = nil,
         prefix = nil,
-        rules = {}
+        rules = {},
+        variables = {}
     }
 
     -- Нужно убедиться что конфиг распарсился
@@ -80,6 +81,16 @@ function parsers.config_parser(xml)
             end
         end
     end
+    -- разбор тегов <variable>
+    if root.variable and type(root.variable) == "table" then
+        if root.variable._attr then -- один элемент <variable>
+            config.variables[root.variable._attr["name"]] = parsers.variable(root.variable)
+        else -- несколько элементов <variable>
+            for _, variable in ipairs(root.variable) do
+                config.variables[variable._attr["name"]] = parsers.variable(variable)
+            end
+        end
+    end
     -- Список правил
     -- <urlrewrite>
     --  <rule>
@@ -110,6 +121,21 @@ function parsers.config_param(config, param, value)
     elseif param == "reload-timeout" then
         config.check_timeout = tonumber(value) or 10
     end
+end
+
+--- Перепаковывает таблицу от <variable>
+--- @param variable table распашенный тег <variable>
+--- @return table
+function parsers.variable(variable)
+    local var = {
+        name = variable._attr["name"],
+        default = variable._attr["default"],
+        loaders = {}
+    }
+    for name, value in pairs(variable) do
+        table.insert(var.loaders, {name = name, value = value})
+    end
+    return var
 end
 
 --- Собирает правило из кусков XML данных.

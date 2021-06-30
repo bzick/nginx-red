@@ -3,16 +3,24 @@
     <langs>
         <lang>ru-ru</lang>
         <lang>zh-cn</lang>
-        <lang>ja-jp</lang>
         <lang>fr-fr</lang>
         <lang>de-de</lang>
         <lang>es-es</lang>
-        <lang>ko-kr</lang>
-        <lang>pt-br</lang>
-        <lang>tl-aa</lang>
         <prefix type="unlocalized">/store</prefix>
         <prefix type="unlocalized">/help</prefix>
     </langs>
+    <variable name="branch" default="master">
+        <!-- значение из куки -->
+        <cookie>some_name</cookie>
+        <!-- значение из аргументов запроса (те что после ?) -->
+        <arg>some_name</arg>
+        <!-- значение переменной окружения (нужно так же разрешить эту переменную в nginx) -->
+        <env>SOME_NAME</env>
+        <!-- переменная из nginx $some_name в процессе выполнения запроса -->
+        <nginx>some_name</nginx>
+        <!-- значение заголовка запроса -->
+        <header>some_name</header>
+    </variable>
     <config param="rules">urlrewrite.samples.xml</config>
     <config param="reload-timeout">30</config>
     <config param="debug">false</config>

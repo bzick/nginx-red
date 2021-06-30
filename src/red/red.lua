@@ -1,11 +1,12 @@
 local tostring  = tostring
-local ipairs    = ipairs
+local ipairs, pairs    = ipairs, pairs
 local pcall     = pcall
 local io        = io
 local ngx       = ngx
 local msgpack   = require("MessagePack")
 local utils     = require("utils")
 local log       = require("log")
+local varset    = require("varset")
 local parsers   = require("parsers")
 local cache = ngx.shared["cache"] or nil
 local config_path = os.getenv("RED_CONFIG_PATH") or ""
@@ -29,6 +30,7 @@ local root_path   = utils.basedir(config_path) -- путь относитель�
 --- @field dynamic_mode boolean импорт включает в себя динамические подстановки
 --- @field check_timeout number как часто проверять изменения файлов
 --- @field rules red.rule[] список правил
+--- @field variables table набор переменных
 
 local CACHE_CHECK_TIMEOUT = 5
 local CACHE_KEY_WATCHER_LOCK = "watcher:lock"
@@ -47,6 +49,7 @@ local CACHE_KEY_CONFIG_DATA = "config:data"
 --- @field langs_modified number время последнего обновления кеша языка (из диска или словаря)
 local red = {
     rules = { },
+    vars = varset:new(),
     config = {
         langs = {},
         prefix = nil,
@@ -54,6 +57,7 @@ local red = {
         rules_path = nil,
         check_timeout = 10
     },
+    vars = varset.new(),
     cache = cache,
     cache_modified = 0,
     cache_checked = 0,
@@ -79,6 +83,7 @@ function red.start_file_watcher()
     end
 end
 
+--- Устанавливает новую конфигурацию приложению.
 --- @param config red.config
 function red.set_config(config)
     log.debug("Rewrite config with", config)
@@ -95,10 +100,20 @@ function red.set_config(config)
         red.config.rules_path = nil
     end
 
+    -- нужно импортировать новые переменные
+    if config.variables then
+        for name, var in pairs(config.variables) do
+            local variable = red.vars:add_variable(name, var.default)
+            for _, loader in ipairs(var.loaders) do
+                variable:add_loader(loader.name, loader.value)
+            end
+        end
+    end
+
     -- в конфиге был задан путь до правил. нужно проверить что является ли он динамическим.
     -- Договоримся что если правила загружаются по пути то вложенные правила  конфига выкидываем.
     if red.config.rules_path then
-        local placeholders = utils.scan_placeholders(red.config.rules_path)
+        local placeholders = varset.has_placeholders(red.config.rules_path)
         if placeholders then -- в пути есть подстановки, нужно переходить в динамический режим
             red.config.dynamic_mode = true
         end
@@ -156,7 +171,7 @@ function red.reload()
 
         if cache_is_modified then
             red.cache:set(CACHE_KEY_MODIFIED, ngx.now())
-            log.debug("config reloaded from fs", red.config, red.rules)
+            log.debug("config reloaded from fs", red.config, red.rules, red.vars)
         else
             log.debug("config not modified")
         end
@@ -225,7 +240,7 @@ function red.get_rules()
         log.debug("Using slow dynamic mode for rules loading")
         -- в случае динамического пути нам нужно:
         -- 1) вычислить новый путь
-        local path = utils.template(red.config.rules_path)
+        local path = red.vars:replace(red.config.rules_path)
         local key_modified = CACHE_KEY_RULES_MODIFIED .. ":" .. path
         local key_data = CACHE_KEY_RULES_DATA .. ":" .. path
         -- 2) загрузить в кеш правила. в кеш загрузятся правила только если нет их в кеше или файл изменился.

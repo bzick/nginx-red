@@ -116,5 +116,5 @@ Location: https://github.com/bzick/nginx-red?type=code&q=iddqd
 ```
 
 ```
-curl -I --cookie "test=samples" '127.0.0.1/search/?q=1'
+curl -I --cookie "some_name=samples" '127.0.0.1/search/?q=1'
 ```
