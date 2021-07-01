@@ -21,6 +21,7 @@ local root_path   = utils.basedir(config_path) -- путь относитель�
 --- @field cond string
 --- @field cond_type string
 --- @field auto_lang_prefix boolean
+--- @field absolute boolean это абсолютная урла на другой ресурс
 --- @field query_append boolean прикреплять параметры запроса (после ?) к редиректу/реврайту
 
 --- @class red.config псевдо-тип нужен для хинтов по настройкам
@@ -351,7 +352,8 @@ function red.try_rule(uri, lang, rule)
         end
     end
 
-    if rule.auto_lang_prefix and lang then -- прикрепляем обратно языковый префикс, если он был в запросе
+    -- прикрепляем обратно языковый префикс, если он был в запросе и урла не абсолютная
+    if rule.auto_lang_prefix and lang and not rule.absolute then
         to = "/" .. lang .. to
     end
     if rule.query_append and query and query ~= "" then -- прикрепляем query строку, если указано

@@ -151,6 +151,7 @@ function parsers.build_rule(v)
     rule.to_has_query = false
     rule.auto_lang_prefix = true
     rule.query_append = true
+    rule.absolute = false
     rule.to_type = parsers.REDIRECT_TEMP
     -- обрабатываем различные варианты тега <to ...>...</to>. Возможные варинаты:
     -- <to>/some/path.html</to>
@@ -183,6 +184,9 @@ function parsers.build_rule(v)
     -- исправляем URL которые начинаются с // на https://
     if rule.to:sub(1,2) == "//" then
         rule.to = "https:" .. rule.to
+        rule.absolute = true
+    elseif rule.to:sub(1,5) == "http:" or rule.to:sub(1,6) == "https:" then -- проверяем что это абсолютные урлы
+        rule.absolute = true
     end
     -- проверяем что to поле может уже иметь query параметры
     if rule.to:find("?", 1, true) ~= nil then
