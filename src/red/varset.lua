@@ -112,6 +112,14 @@ function varset:replace(str)
     end))
 end
 
+--- Дописывает массив переменных, перетирая уже существующие
+--- @param other_varset red.varset
+function varset:merge(other_varset)
+    for k, v in pairs(other_varset.vars) do
+        self.vars[k] = v
+    end
+end
+
 --- Проверяет что в строке есть подстановка переменной вида {some_variable}.
 --- @param str string
 --- @return boolean

@@ -4,6 +4,7 @@ local ipairs = ipairs
 local tostring = tostring
 local table = table
 local tonumber = tonumber
+local io    = io
 local ngx   = ngx
 local log       = require("log")
 local xml2lua   = require("xml2lua")
@@ -11,9 +12,32 @@ local handler = require("xmlhandler.tree")
 local utils     = require("utils")
 local varset     = require("varset")
 
---- @class red.parsers
---- Набор парсеров для разбора языков и правил редиректов.
-local parsers = {
+--- @class red.rule псевдо-тип нужен для хинтов по правилам
+--- @field from string правило совпадения URI, регулярка
+--- @field opts string флаги регулярки, обычно это "i"
+--- @field to string правела замещение URI для редиректа или forwarding
+--- @field to_type string действие при совпадении правила: редирект или forwarding
+--- @field to_has_query boolean to поле имеет параметры запроса (имеет ?)
+--- @field cond string
+--- @field cond_type string
+--- @field auto_lang_prefix boolean
+--- @field absolute boolean это абсолютная урла на другой ресурс
+--- @field query_append boolean прикреплять параметры запроса (после ?) к редиректу/реврайту
+
+--- @class red.locale
+--- @field langs table<string,boolean>
+--- @field prefix string[]
+
+--- @class red.config конфигурация red сервера
+--- @field prefix string[] массив префиксов, которые должны откинуть свой префикс языка.
+--- @field rules_path string дополнительный файл откуда брать другие правила, если путь не указан или файла нет - берутся дефолтные правила из конфига
+--- @field langs_path string дополнительный файл откуда брать языки, если путь не указан или файла нет - берутся дефолтные языки из конфига
+--- @field dynamic_mode boolean импорт включает в себя динамические подстановки в langs_path и/или rules_path
+--- @field check_timeout number как часто проверять изменения файлов
+--- @field rules red.rule[] список правил
+--- @field locale red.locale список правил
+--- @field variables red.varset набор переменных
+local config = {
     --- Постоянный редирект кодом 301
     REDIRECT_PERM = 1,
     --- Временный редирект кодом 302
@@ -23,49 +47,78 @@ local parsers = {
     --- Дополнительное условие на query (тег <condition>)
     COND_QUERY_STRING   = 1
 }
+local meta = { __index = config }
+
+function config.new()
+    return setmetatable({
+        prefix  = nil,
+        rules_path = nil,
+        langs_path = nil,
+        dynamic_mode = false,
+        check_timeout = 10,
+        rules = {},
+        locale = {
+            langs = {},
+            prefix = {}
+        },
+        variables = varset:new()
+    }, meta)
+end
+
+function config:add_lang(name)
+    self.locale.langs[name] = true
+end
+
+function config:add_lang_prefix(name)
+    table.insert(self.locale.prefix, name)
+end
+
+function config:parse_xml_file(path)
+    local file, err = io.open(path, "r")
+    if not file then
+        return "failed to open file " .. path .. ": " .. tostring(err or "no error")
+    end
+    local data = file:read("*all") -- вычитываем всё из файла специальным флагом
+    file:close()
+    if data == "" then
+        return "file ".. tostring(path) .. " is empty"
+    end
+
+    return config:parse_xml(data)
+end
 
 --- Парсит список допустимых для URL языки.
 --- Метод не использует nginx api, и, как следствие, можно вызвать в любом месте.
 --- @param xml string xml данные языков вида
---- @return table|nil в случае успеха
-function parsers.config_parser(xml)
+--- @return string|nil строка с ошибкой, если она произошла
+function config:parse_xml(xml)
     local h = handler:new()
     local parser = xml2lua.parser(h)
     parser:parse(xml)
-    --- @type red.config
-    local config = {
-        langs = nil,
-        prefix = nil,
-        rules = {},
-        variables = {}
-    }
 
     -- Нужно убедиться что конфиг распарсился
     if not h.root or not h.root.urlrewrite then
-        log.warn("Invalid XML config")
-        return
+        return "Invalid XML config"
     end
     local root = h.root.urlrewrite
 
     if root.langs then -- есть тег <langs>
         if root.langs.lang and type(root.langs.lang) == "table"  then   -- есть "массив" из <lang>
-            config.langs = {}
             for _, lang in pairs(root.langs.lang) do
-                config.langs[lang] = true
+                self:add_lang(lang)
             end
         end
         if root.langs.prefix and type(root.langs.prefix) == "table" then
-            config.prefix = {}
             for _, prefix in pairs(root.langs.prefix) do
                 -- <prefix type="unlocalized">/store</prefix>:
                 -- prefix = {
                 --   _attr = {
-                --     type = (string) unlocalized
+                --     auto-lang-prefix = (string) false
                 --   }
                 --   [1] = (string) /store
                 -- }
-                if type(prefix) == "table" and prefix._attr["type"] and prefix._attr["type"] == "unlocalized" then
-                    table.insert(config.prefix, prefix[1])
+                if type(prefix) == "table" and prefix._attr["auto-lang-prefix"] and prefix._attr["auto-lang-prefix"] == "false" then
+                    self:add_lang_prefix(prefix[1])
                 else
                     log.warn("Invalid prefix rule", prefix)
                 end
@@ -74,20 +127,20 @@ function parsers.config_parser(xml)
     end
     if root.config and type(root.config) == "table" then
         if root.config._attr and root.config._attr["param"] then -- это всего одна запись <param>
-            parsers.config_param(config, root.config._attr["param"], root.config[1])
+            self:set_param(root.config._attr["param"], root.config[1])
         else -- иначе это массив параметров
             for _, c in ipairs(root.config) do
-                parsers.config_param(config, c._attr["param"], c[1])
+                self:set_param(c._attr["param"], c[1])
             end
         end
     end
     -- разбор тегов <variable>
     if root.variable and type(root.variable) == "table" then
         if root.variable._attr then -- один элемент <variable>
-            config.variables[root.variable._attr["name"]] = parsers.variable(root.variable)
+            self:add_variable(root.variable._attr["name"], root.variable._attr["default"], root.variable)
         else -- несколько элементов <variable>
             for _, variable in ipairs(root.variable) do
-                config.variables[variable._attr["name"]] = parsers.variable(variable)
+                self:add_variable(variable._attr["name"], variable._attr["default"], variable)
             end
         end
     end
@@ -100,7 +153,7 @@ function parsers.config_parser(xml)
     --  </rule>
     if root.rule and type(root.rule) == "table" then
         for _, v in pairs(root.rule) do
-            local rule, err = parsers.build_rule(v)
+            local rule, err = config.build_rule_from_xml(v)
             if err then
                 log.warn(tostring(err) .. " Skip rule", v)
             else
@@ -108,34 +161,34 @@ function parsers.config_parser(xml)
             end
         end
     end
-
-    return config
+    return nil
 end
 
+--- Разбирает различные значения параметров [param] конфига
 --- @param config red.config
 --- @param param string
 --- @param value string
-function parsers.config_param(config, param, value)
+function config:set_param(param, value)
     if param == "rules" then
-        config.rules_path = value
+        self.rules_path = value
+    elseif param == "langs" then
+        self.langs_path = value
     elseif param == "reload-timeout" then
-        config.check_timeout = tonumber(value) or 10
+        self.check_timeout = tonumber(value) or 10
     end
 end
 
---- Перепаковывает таблицу от <variable>
+--- Перепаковывает таблицу от <variable> в массив переменных
+--- @param vars red.varset массив переменных
 --- @param variable table распашенный тег <variable>
---- @return table
-function parsers.variable(variable)
-    local var = {
-        name = variable._attr["name"],
-        default = variable._attr["default"],
-        loaders = {}
-    }
-    for name, value in pairs(variable) do
-        table.insert(var.loaders, {name = name, value = value})
+function config:add_variable(name, default, loaders)
+    if not name then
+        return
     end
-    return var
+    local var = self.variables:add_variable(name, default)
+    for from, what in pairs(loaders) do
+        var:add_loader(from, what)
+    end
 end
 
 --- Собирает правило из кусков XML данных.
@@ -143,7 +196,7 @@ end
 --- @param v table распаршенный вариант XML
 --- @return red.rule собраное правило, nil если были ошибки при сборке
 --- @return string ошибка если правило кривое
-function parsers.build_rule(v)
+function config.build_rule_from_xml(v)
     --- @type red.rule
     local rule = {}
     rule.valid = true
@@ -152,7 +205,7 @@ function parsers.build_rule(v)
     rule.auto_lang_prefix = true
     rule.query_append = true
     rule.absolute = false
-    rule.to_type = parsers.REDIRECT_TEMP
+    rule.to_type = config.REDIRECT_TEMP
     -- обрабатываем различные варианты тега <to ...>...</to>. Возможные варинаты:
     -- <to>/some/path.html</to>
     -- <to type="permanent-redirect">/some/path.html</to>
@@ -165,11 +218,11 @@ function parsers.build_rule(v)
         rule.to = v.to[1]
         if v.to._attr then
             if v.to._attr["type"] == "permanent-redirect" then -- атрибут type
-                rule.to_type = parsers.REDIRECT_PERM
+                rule.to_type = config.REDIRECT_PERM
             elseif v.to._attr["type"] == "forwarding" then
-                rule.to_type = parsers.FORWARDING
+                rule.to_type = config.FORWARDING
             elseif v.to._attr["type"] == "temporary-redirect" then
-                rule.to_type = parsers.REDIRECT_TEMP
+                rule.to_type = config.REDIRECT_TEMP
             end
             if v.to._attr["auto-lang-prefix"] == "false" then -- атрибут auto-lang-prefix
                 rule.auto_lang_prefix = false
@@ -215,7 +268,7 @@ function parsers.build_rule(v)
         if v.condition._attr and v.condition[1] then -- проверяем что сигнатура верна, есть и аттрибуы и значение тега
             rule.cond = v.condition[1]
             if v.condition._attr.type == "query-string" then
-                rule.cond_type = parsers.COND_QUERY_STRING
+                rule.cond_type = config.COND_QUERY_STRING
             else
                 return nil , "Invalid rule.condition[query-string]: '" .. rule.cond_type
             end
@@ -236,4 +289,4 @@ function parsers.build_rule(v)
 end
 
 
-return parsers
+return config

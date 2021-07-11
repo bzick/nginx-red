@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlrewrite>
+    <langs>
+        <lang>ru-ru</lang>
+        <lang>zh-cn</lang>
+        <lang>fr-fr</lang>
+        <lang>de-de</lang>
+        <lang>es-es</lang>
+        <lang>pt-pt</lang>
+        <prefix auto-lang-prefix="false">/store</prefix>
+        <prefix auto-lang-prefix="false">/help</prefix>
+        <prefix auto-lang-prefix="false">/goto</prefix>
+    </langs>
+</urlrewrite>

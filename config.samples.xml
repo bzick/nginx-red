@@ -6,8 +6,8 @@
         <lang>fr-fr</lang>
         <lang>de-de</lang>
         <lang>es-es</lang>
-        <prefix type="unlocalized">/store</prefix>
-        <prefix type="unlocalized">/help</prefix>
+        <prefix auto-lang-prefix="false">/store</prefix>
+        <prefix auto-lang-prefix="false">/help</prefix>
     </langs>
     <variable name="branch" default="master">
         <!-- значение из куки -->
@@ -22,6 +22,7 @@
         <header>some_name</header>
     </variable>
     <config param="rules">urlrewrite.samples.xml</config>
+    <config param="langs">langs.samples.xml</config>
     <config param="reload-timeout">30</config>
     <config param="debug">false</config>
 </urlrewrite>
