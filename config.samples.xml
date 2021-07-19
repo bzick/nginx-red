@@ -21,8 +21,8 @@
         <!-- значение заголовка запроса -->
         <header>some_name</header>
     </variable>
-    <config param="rules">urlrewrite.samples.xml</config>
-    <config param="langs">langs.samples.xml</config>
+    <config param="rules">urlrewrite.{branch}.xml</config>
+    <config param="langs">langs.{branch}.xml</config>
     <config param="reload-timeout">30</config>
     <config param="debug">false</config>
 </urlrewrite>

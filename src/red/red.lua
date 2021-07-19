@@ -1,7 +1,5 @@
 local tostring  = tostring
 local ipairs, pairs    = ipairs, pairs
-local pcall     = pcall
-local io        = io
 local ngx       = ngx
 local msgpack   = require("MessagePack")
 local utils     = require("utils")
@@ -25,28 +23,28 @@ local CACHE_KEY_LOCALE_DATA = "locale:data"
 --- @field cache userdata nginx кеш
 --- @field config red.config настройки поведения
 --- @field langs table<string,boolean> хеш-таблица языков
---- @field rules_modified number время последнего обновления кеша правил (из диска или словаря)
---- @field langs_modified number время последнего обновления кеша языка (из диска или словаря)
 local red = {
     rules = { },
     config = cfg.new(),
     vars = varset.new(),
     cache = cache,
-    cache_modified = 0,
-    cache_checked = 0,
 }
 
 --- Начальная инициализация приложения
 --- 1) загрузка базового конифга
 function red.init()
+    red.config:set_root_path(root_path)
     local err = red.config:parse_xml_file(config_path)
     if err then
         log.err("Failed to load config " .. config_path .. ":" .. err)
     end
     if not red.config.dynamic_mode then
-        -- если не у нас не динамичесие пути то делаем предзагрузку всего что можем сразу и в red
+        -- если не у нас статические пути в конифге то делаем предзагрузку всего что можем сразу и в память
         red.reload()
+        red.cache_checked = ngx.now() -- кеш уже обновлён так как только что его загрузили
     end
+    log.debug("Config initialized", red.config)
+
 end
 
 --- Запускает таймер, который обновляет языки и правила с диска, если файлы поменялись.
@@ -58,7 +56,7 @@ function red.start_file_watcher()
         -- проверяя актуальность их при каждом хите
         return
     end
-    -- файл будет загружать всегда самый первый воркер с id 0, он всегда будет существовать
+    -- кеши будет обновлять всегда самый первый воркер с id 0, он всегда будет существовать
     -- если воркер будет убит, master сам поднимет новый воркер с тем же id.
     if ngx.worker.id() == nil then -- очень старые nginx (nginx < 1.9.1) версии не имели фиксированные id воркеров.
         local _, err = ngx.timer.every(red.config.check_timeout, red.reload)
@@ -138,7 +136,7 @@ function red.reload()
     if red.config.dynamic_mode then
         -- при dynamic_mode мы не перезагружаем конфигурацию в red
         -- reload не должен происходить так как при dynamic_mode не запускаются таймеры, но поставим проверку, на всякий.
-        return false
+        return
     end
     -- Выставляем блокировку на эксклюзивный доступ к файловой системе.
     -- Блокировка ставится на половину времени от timeout что бы следующий воркер уже мог взяться за дело.
@@ -170,7 +168,7 @@ function red.reload()
 
         if cache_is_modified then
             red.cache:set(CACHE_KEY_MODIFIED, ngx.now())
-            log.debug("configuration reloaded from fs", red.config, red.rules, red.vars)
+            log.debug("configuration reloaded from fs")
         else
             log.debug("configuration not modified")
         end
@@ -179,7 +177,7 @@ function red.reload()
     end
 end
 
---- Выполняет загрузку конфига c диска, парсит и результат парсера возвращает и сохраняет в кеш.
+--- Выполняет загрузку конфига c диска, парсит и результат парсера сохраняет в кеш и возвращает.
 --- @param path string путь до файла данных
 --- @param modified_lock string ключ словаря где хранится последний mtime файла
 --- @param data_lock string ключ словаря где хранятся данные
@@ -217,14 +215,14 @@ end
 --- что негативно сказывается на производительности.
 --- 2) Статичный же режим наоборот - самый производительный.
 --- В этом режиме проверяется есть ли обновление кеша, если кеш обновился то выгружает новые правила и языки из кеша,
---- не трогая файловую систему. Метод работает только со памятью nginx и является очень производительным.
+--- не трогая файловую систему. В этом режиме метод работает только с памятью nginx и является очень производительным.
 --- Так же метод не будет проверять кеш если буквально недавно проверял,
 --- расстояние между проверками составляет CACHE_CHECK_TIMEOUT
 --- @return red.rule[]
 --- @return red.locale
 function red.get_runtime()
     if red.config.dynamic_mode then
-        log.debug("Using slow dynamic mode for rules loading")
+        log.debug("Using slow dynamic mode")
         local rules, locale = red.rules, red.locale
         if red.config.rules_path then
             local config, err = red.fetch_dynamic_config(red.config.rules_path, CACHE_KEY_RULES_MODIFIED, CACHE_KEY_RULES_DATA)
@@ -244,8 +242,9 @@ function red.get_runtime()
         end
         return rules, locale
     else
+        log.debug("Using fast static mode")
         -- мы работаем без динамики, можем кешировать прямо в память.
-        -- но что бы не терибить часто память будем делать проверять кеш только периодично.
+        -- но что бы не терибить часто память будем проверять кеш периодично раз в CACHE_CHECK_TIMEOUT секунд.
         if red.cache_checked + CACHE_CHECK_TIMEOUT < ngx.now() then -- проверям как давно проверяли кеш
             local cache_modified = red.cache:get(CACHE_KEY_MODIFIED)  -- получаем последнее изменение кеша
             if not red.cache_modified or red.cache_modified ~= cache_modified then -- сверяемся были ли изменения в кеше
@@ -274,10 +273,16 @@ function red.get_runtime()
     end
 end
 
+--- Возвращает конфиг соответвующий указанному пути.
+--- Если в кеше нет конфига, то производит его загрузку в кеш.
+--- @param config_filename string путь до файла
+--- @param modified_key_prefix string ключ/префикс кеша в который писать дату обновления
+--- @param data_key_prefix string ключ/префикс кеша в который писать загруженные данные
+--- @return red.config
 function red.fetch_dynamic_config(config_filename, modified_key_prefix, data_key_prefix)
     -- в случае динамического пути нам нужно:
     -- 1) вычислить новый путь
-    local path = red.vars:replace(config_filename)
+    local path = red.config.variables:replace(config_filename)
     local key_modified = modified_key_prefix
     local key_data = data_key_prefix
     if path ~= config_filename then
@@ -338,7 +343,7 @@ end
 --- @param uri string текущий URI запроса, без языкового префикса
 --- @param lang string|nil языковый префикс, если он был у запроса
 --- @param rule red.rule само правило которое надо попробовать применить
---- @param locale red.locale само правило которое надо попробовать применить
+--- @param locale red.locale настройки локализации
 --- @return boolean false — условия не удовлетворяют правилам, true - всё применилось.
 ---                 хотя при редиректе до возврата из метода не дойдёт — скрипт закончится на редиректе.
 function red.try_rule(uri, lang, rule, locale)
@@ -356,7 +361,7 @@ function red.try_rule(uri, lang, rule, locale)
             return false
         end
     end
-    if lang then
+    if lang and locale then
         -- если задан языковый префикс, проверяем префиксы на наличие unlocalized адресов
         for _, p in ipairs(locale.prefix) do
             if to:find(p, 1, true) == 1 then

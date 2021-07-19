@@ -57,6 +57,7 @@ function config.new()
         dynamic_mode = false,
         check_timeout = 10,
         rules = {},
+        root_path = nil,
         locale = {
             langs = {},
             prefix = {}
@@ -73,6 +74,12 @@ function config:add_lang_prefix(name)
     table.insert(self.locale.prefix, name)
 end
 
+--- Задаёт корневой путь относительно которого будет производиться загрузка файлов в конфиге.
+--- @param root_path string
+function config:set_root_path(root_path)
+    self.root_path = root_path
+end
+
 function config:parse_xml_file(path)
     local file, err = io.open(path, "r")
     if not file then
@@ -84,7 +91,7 @@ function config:parse_xml_file(path)
         return "file ".. tostring(path) .. " is empty"
     end
 
-    return config:parse_xml(data)
+    return self:parse_xml(data)
 end
 
 --- Парсит список допустимых для URL языки.
@@ -157,7 +164,7 @@ function config:parse_xml(xml)
             if err then
                 log.warn(tostring(err) .. " Skip rule", v)
             else
-                table.insert(config.rules, rule)
+                table.insert(self.rules, rule)
             end
         end
     end
@@ -170,9 +177,23 @@ end
 --- @param value string
 function config:set_param(param, value)
     if param == "rules" then
-        self.rules_path = value
+        if value:sub(1,1) == "/" then
+            self.rules_path = value
+        elseif self.root_path then
+            self.rules_path = self.root_path .. "/" .. value
+        end
+        if varset.has_placeholders(self.rules_path) then
+            self.dynamic_mode = true
+        end
     elseif param == "langs" then
-        self.langs_path = value
+        if value:sub(1,1) == "/" then
+            self.langs_path = value
+        elseif self.root_path then
+            self.langs_path = self.root_path .. "/" .. value
+        end
+        if varset.has_placeholders(self.langs_path) then
+            self.dynamic_mode = true
+        end
     elseif param == "reload-timeout" then
         self.check_timeout = tonumber(value) or 10
     end

@@ -107,7 +107,7 @@ function varset:replace(str)
         if self.vars[w] then
             return self.vars[w]:get_value()
         else
-            return "{" .. w .. "}"
+            return "{?" .. w .. "?}"
         end
     end))
 end
