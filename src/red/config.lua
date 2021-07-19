@@ -66,10 +66,14 @@ function config.new()
     }, meta)
 end
 
+--- Добавляет языковый префикс
+--- @param name string сам префикс, например ru-ru, en-us
 function config:add_lang(name)
     self.locale.langs[name] = true
 end
 
+--- Добавляет язковую настройку по началу URL
+--- @param name string префикс URL, например /store, /help
 function config:add_lang_prefix(name)
     table.insert(self.locale.prefix, name)
 end
@@ -80,6 +84,10 @@ function config:set_root_path(root_path)
     self.root_path = root_path
 end
 
+--- Читает и парсит XML конфиг файл
+--- Всё спаршенное раскидывает по свойствам объекта
+--- @param path string путь до файла
+--- @return string|nil возвращает ошибку либо nil, если без ошибок
 function config:parse_xml_file(path)
     local file, err = io.open(path, "r")
     if not file then
@@ -94,7 +102,7 @@ function config:parse_xml_file(path)
     return self:parse_xml(data)
 end
 
---- Парсит список допустимых для URL языки.
+--- Парсит XML конфигурацию
 --- Метод не использует nginx api, и, как следствие, можно вызвать в любом месте.
 --- @param xml string xml данные языков вида
 --- @return string|nil строка с ошибкой, если она произошла
@@ -217,6 +225,7 @@ end
 --- @param v table распаршенный вариант XML
 --- @return red.rule собраное правило, nil если были ошибки при сборке
 --- @return string ошибка если правило кривое
+--- @private
 function config.build_rule_from_xml(v)
     --- @type red.rule
     local rule = {}
