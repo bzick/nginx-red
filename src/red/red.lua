@@ -56,6 +56,10 @@ function red.start_file_watcher()
         -- проверяя актуальность их при каждом хите
         return
     end
+    if not red.config.check_timeout or red.config.check_timeout == 0 then
+        -- если не указан reload-timeout или если он равен нулю то таймер не ставим
+        return
+    end
     -- кеши будет обновлять всегда самый первый воркер с id 0, он всегда будет существовать
     -- если воркер будет убит, master сам поднимет новый воркер с тем же id.
     if ngx.worker.id() == nil then -- очень старые nginx (nginx < 1.9.1) версии не имели фиксированные id воркеров.
