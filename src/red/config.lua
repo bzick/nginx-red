@@ -118,9 +118,13 @@ function config:parse_xml(xml)
     local root = h.root.urlrewrite
 
     if root.langs then -- есть тег <langs>
-        if root.langs.lang and type(root.langs.lang) == "table"  then   -- есть "массив" из <lang>
-            for _, lang in pairs(root.langs.lang) do
-                self:add_lang(lang)
+        if root.langs.lang then   -- есть "массив" из <lang>
+            if type(root.langs.lang) == "table" then
+                for _, lang in pairs(root.langs.lang) do
+                    self:add_lang(lang)
+                end
+            else if type(root.langs.lang) == "string" then
+                self:add_lang(root.langs.lang)
             end
         end
         if root.langs.prefix and type(root.langs.prefix) == "table" then

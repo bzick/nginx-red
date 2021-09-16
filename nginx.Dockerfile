@@ -1,6 +1,6 @@
 FROM alpine:3.14
 
-ARG NGINX_VERSION=1.20.1
+ARG NGINX_VERSION=1.21.3
 
 # see https://github.com/vision5/ngx_devel_kit/tags
 ARG NGINX_DEVEL_KIT=0.3.1
