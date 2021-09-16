@@ -123,7 +123,7 @@ function config:parse_xml(xml)
                 for _, lang in pairs(root.langs.lang) do
                     self:add_lang(lang)
                 end
-            else if type(root.langs.lang) == "string" then
+            elseif type(root.langs.lang) == "string" then
                 self:add_lang(root.langs.lang)
             end
         end
