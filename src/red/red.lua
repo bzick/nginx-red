@@ -38,6 +38,12 @@ function red.init()
     if err then
         log.err("Failed to load config " .. config_path .. ":" .. err)
     end
+    if red.config.locale then
+        red.locale = red.config.locale
+    end
+    if red.config.rules then
+        red.rules = red.config.rules
+    end
     if not red.config.dynamic_mode then
         -- если не у нас статические пути в конифге то делаем предзагрузку всего что можем сразу и в память
         red.reload()
@@ -235,6 +241,7 @@ function red.get_runtime()
         end
         return red.rules, red.locale
     else
+        log.debug("Using fast static mode without cache")
         return red.rules, red.locale
     end
 end
@@ -314,6 +321,7 @@ end
 ---                 хотя при редиректе до возврата из метода не дойдёт — скрипт закончится на редиректе.
 function red.try_rule(uri, lang, rule, locale)
     local to, n = ngx.re.gsub(uri, rule.from, rule.to, rule.opts)
+    local auto_lang_prefix = rule.auto_lang_prefix
     -- сработало правило, нужно определиться с действиями
     -- но перед эти надо проверить если ли улсовия на язык у правила и они совпадают с полученым lang
     if n == 0 or not to then -- нет совпадения по rule.from
@@ -331,14 +339,13 @@ function red.try_rule(uri, lang, rule, locale)
         -- если задан языковый префикс, проверяем префиксы на наличие unlocalized адресов
         for _, p in ipairs(locale.prefix) do
             if to:find(p, 1, true) == 1 then
-                rule.auto_lang_prefix = false
+                auto_lang_prefix = false
                 break
             end
         end
     end
-
     -- прикрепляем обратно языковый префикс, если он был в запросе и урла не абсолютная
-    if rule.auto_lang_prefix and lang and not rule.absolute then
+    if auto_lang_prefix and lang and not rule.absolute then
         to = "/" .. lang .. to
     end
     if rule.query_append and query and query ~= "" then -- прикрепляем query строку, если указано
