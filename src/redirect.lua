@@ -1,10 +1,14 @@
 local red = red
-local pcall = pcall
+local xpcall = xpcall
 local tostring = tostring
 local log = require("log")
+local traceback = debug.traceback
 
 -- защищаем себя от различных сбоев через pcall
-local ok, err = pcall(red.route)
-if not ok then
-    log.err("Failed to route redirect: " .. tostring(err))
-end
+xpcall(red.route, function(err)
+    if log.is_debug then
+        log.err("Failed to route redirect: " .. tostring(err) .. ". Traceback: " .. traceback())
+    else
+        log.err("Failed to route redirect: " .. tostring(err))
+    end
+end)

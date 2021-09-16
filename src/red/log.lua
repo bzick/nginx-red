@@ -7,7 +7,10 @@ if red_debug and red_debug == "1" then
 end
 
 --- Объект логгера
-local log = {}
+--- @field is_debug boolean
+local log = {
+    is_debug = debug
+}
 
 --- Логгирование в error лог nginx-а c уровнем info
 function log.info(...)
