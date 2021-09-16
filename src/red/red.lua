@@ -205,7 +205,7 @@ function red.get_runtime()
             end
         end
         return rules, locale
-    else
+    elseif red.config.check_timeout ~= 0 then -- Сначала проверим что у нас вообще включена проверка изменений файлов
         log.debug("Using fast static mode")
         -- мы работаем без динамики, можем кешировать прямо в память.
         -- но что бы не терибить часто память будем проверять кеш периодично раз в CACHE_CHECK_TIMEOUT секунд.
@@ -233,6 +233,8 @@ function red.get_runtime()
             end
             red.cache_checked = ngx.now()
         end
+        return red.rules, red.locale
+    else
         return red.rules, red.locale
     end
 end
