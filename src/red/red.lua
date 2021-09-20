@@ -330,7 +330,7 @@ function red.try_rule(uri, lang, rule, locale)
     log.debug("Rule matched", rule)
     local query = ngx.var.args -- параметры запроса, всё после `?`, строкой
     if rule.cond and rule.cond_type == cfg.COND_QUERY_STRING then -- проверка condition
-        local cond_check = ngx.re.match(query, rule.cond, "i")
+        local cond_check = ngx.re.match(query, rule.cond)
         if not cond_check then
             return false
         end
