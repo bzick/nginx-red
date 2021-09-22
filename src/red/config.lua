@@ -234,7 +234,8 @@ function config.build_rule_from_xml(v)
     --- @type red.rule
     local rule = {}
     rule.valid = true
-    rule.opts = "i"
+    rule.opts = ""
+    --rule.opts = "i"
     rule.to_has_query = false
     rule.auto_lang_prefix = true
     rule.query_append = true

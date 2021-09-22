@@ -56,6 +56,11 @@
     <from>^/store/make</from>
     <to>/store/order</to>
   </rule>
+  <rule>
+    <note>Case sensitive matching</note>
+    <from>^/(YouTube|Youtube)/$</from>
+    <to>/youtube/</to>
+  </rule>
 </urlrewrite>
 
 
