@@ -42,15 +42,11 @@ Nginx Redirector — [Tuckey urlrewrite](https://tuckey.org/urlrewrite/) на б
 
 ```nginx
 env RED_DEBUG=0;
-env RED_RULES_PATH=/var/www/urlrewrite.xml;
-env RED_LANGS_PATH=/var/www/langs.xml;
-env RED_RELOAD_TIMEOUT=10;
+env RED_CONFIG_PATH=/var/www/config.xml;
 ```
 
 * `RED_DEBUG` — включает отладку у red. `0` или `1`
-* `RED_RULES_PATH` — путь до правил в [формате xml](./urlrewrite.samples.xml).
-* `RED_LANGS_PATH` — путь до языков в [формате xml](config.samples.xml).
-* `RED_RELOAD_TIMEOUT` — интервал проверки файлов правил и языков на изменение, что бы загрузить свежую версию. Секунды.
+* `RED_RULES_PATH` — путь до конфига в [формате xml](./urlrewrite.samples.xml), где могут быть языки и правила, либо ссылки на файлы. И прочие настройки.
 
 Директивы настройки lua:
 
