@@ -41,4 +41,6 @@
     <config param="reload-timeout">30</config>
     <!-- Включение режима отладки. Error лог Nginx-а должен быть сконфижен с уровнем info. -->
     <config param="debug">false</config>
+    <!-- Removes a specific suffix from a URL before matching rules -->
+    <config param="trim-suffix">index.html</config>
 </urlrewrite>

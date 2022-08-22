@@ -302,6 +302,9 @@ function red.route()
             lang = nil
         end
     end
+    if red.config.trim_suffix ~= "" then
+        uri = uri:gsub("%" ..red.config.trim_suffix , "")
+    end
     --- нужно перебрать каждое правило и попробовать применить к текущему uri
     for _, rule in ipairs(rules) do
         if red.try_rule(uri, lang, rule, locale) then

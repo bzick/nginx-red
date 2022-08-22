@@ -37,6 +37,7 @@ local varset     = require("varset")
 --- @field rules red.rule[] список правил
 --- @field locale red.locale список правил
 --- @field variables red.varset набор переменных
+--- @field trim_suffix string suffix to be removed
 local config = {
     --- Постоянный редирект кодом 301
     REDIRECT_PERM = 1,
@@ -56,6 +57,7 @@ function config.new()
         langs_path = nil,
         dynamic_mode = false,
         check_timeout = 10,
+        trim_suffix = "",
         rules = {},
         root_path = nil,
         locale = {
@@ -208,6 +210,8 @@ function config:set_param(param, value)
         end
     elseif param == "reload-timeout" then
         self.check_timeout = tonumber(value) or 10
+    elseif param == "trim-suffix" then
+        self.trim_suffix = value
     end
 end
 
