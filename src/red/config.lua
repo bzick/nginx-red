@@ -211,7 +211,7 @@ function config:set_param(param, value)
     elseif param == "reload-timeout" then
         self.check_timeout = tonumber(value) or 10
     elseif param == "trim-suffix" then
-        self.trim_suffix = value
+        self.trim_suffix = tostring(value)
     end
 end
 
