@@ -9,7 +9,6 @@ local ngx   = ngx
 local log       = require("log")
 local xml2lua   = require("xml2lua")
 local handler = require("xmlhandler.tree")
-local utils     = require("utils")
 local varset     = require("varset")
 
 --- @class red.rule псевдо-тип нужен для хинтов по правилам
@@ -30,8 +29,10 @@ local varset     = require("varset")
 
 --- @class red.config конфигурация red сервера
 --- @field prefix string[] массив префиксов, которые должны откинуть свой префикс языка.
---- @field rules_path string дополнительный файл откуда брать другие правила, если путь не указан или файла нет - берутся дефолтные правила из конфига
---- @field langs_path string дополнительный файл откуда брать языки, если путь не указан или файла нет - берутся дефолтные языки из конфига
+--- @field rules_path string файл откуда брать другие правила, если путь не указан или файла нет - берутся дефолтные правила из конфига
+--- @field rules_path_fallback string дополнительный файл откуда брать другие правила, если rules_path нет
+--- @field langs_path string файл откуда брать языки, если путь не указан или файла нет - берутся дефолтные языки из конфига
+--- @field langs_path_fallback string дополнительный файл откуда брать другие правила, если langs_path_fallback нет
 --- @field dynamic_mode boolean импорт включает в себя динамические подстановки в langs_path и/или rules_path
 --- @field check_timeout number как часто проверять изменения файлов
 --- @field rules red.rule[] список правил
@@ -199,6 +200,13 @@ function config:set_param(param, value)
         if varset.has_placeholders(self.rules_path) then
             self.dynamic_mode = true
         end
+    elseif param == "rules-fallback" then
+        if value:sub(1,1) == "/" then
+            self.rules_path_fallback = value
+        elseif self.root_path then
+            self.rules_path_fallback = self.root_path .. "/" .. value
+        end
+        self.dynamic_mode = true
     elseif param == "langs" then
         if value:sub(1,1) == "/" then
             self.langs_path = value
@@ -208,6 +216,13 @@ function config:set_param(param, value)
         if varset.has_placeholders(self.langs_path) then
             self.dynamic_mode = true
         end
+    elseif param == "langs-fallback" then
+        if value:sub(1,1) == "/" then
+            self.langs_path_fallback = value
+        elseif self.root_path then
+            self.langs_path_fallback = self.root_path .. "/" .. value
+        end
+        self.dynamic_mode = true
     elseif param == "reload-timeout" then
         self.check_timeout = tonumber(value) or 10
     elseif param == "trim-suffix" then

@@ -8,7 +8,6 @@ description = {
 }
 dependencies = {
     "xml2lua >= 1.4",
-    "luafilesystem-ffi",
     "lua-messagepack == 0.5.2-1",
     "lua-resty-cookie"
 }

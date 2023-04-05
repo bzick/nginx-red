@@ -3,12 +3,12 @@ local select = select
 local table = table
 local getmetatable = getmetatable
 local string, tostring = string, tostring
-local pairs, ipairs = pairs, ipairs
+local pairs = pairs
 local pcall = pcall
 
 --- Набор вспомогательных утилит
 local utils = {}
-local lfs = require("lfs")
+local mtime = require("stat")
 
 --- Export arguments as string
 --- @return string
@@ -97,11 +97,7 @@ end
 --- @param filename string путь до файла
 --- @return number|nil если файла нет то будет возвращено nil
 function utils.get_file_mtime(filename)
-    local stats = lfs.attributes(filename)
-    if stats then
-        return stats.change
-    end
-    return nil
+    return mtime(filename)
 end
 
 --- Возвращает директорию от пути

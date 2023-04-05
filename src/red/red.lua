@@ -1,5 +1,5 @@
 local tostring  = tostring
-local ipairs, pairs    = ipairs, pairs
+local ipairs    = ipairs
 local ngx       = ngx
 local msgpack   = require("MessagePack")
 local utils     = require("utils")
@@ -49,8 +49,8 @@ function red.init()
         red.reload()
         red.cache_checked = ngx.now() -- кеш уже обновлён так как только что его загрузили
     end
-    log.debug("Config initialized", red.config)
-
+    log.debug("Config initialized")
+    --log.debug("Config initialized", red.config)
 end
 
 --- Запускает таймер, который обновляет языки и правила с диска, если файлы поменялись.
@@ -115,7 +115,7 @@ function red.reload()
         local cache_is_modified = false
 
         if red.config.langs_path then
-            local locale_config, locale_err = red.load_to_cache(red.config.langs_path, CACHE_KEY_LOCALE_MODIFIED, CACHE_KEY_LOCALE_DATA)
+            local locale_config, locale_err = red.load_to_cache(red.config.langs_path, red.config.langs_path_fallback, CACHE_KEY_LOCALE_MODIFIED, CACHE_KEY_LOCALE_DATA)
             if locale_err then
                 log.err("Failed to load locales from `" .. (red.config.langs_path or "none") .. "`: " .. locale_err)
             elseif locale_config then
@@ -127,7 +127,7 @@ function red.reload()
         -- если есть путь и он без подстановок то правило по нему можно загрузить
         if red.config.rules_path then
             -- @type red.rules
-            local rules_config, rules_err = red.load_to_cache(red.config.rules_path, CACHE_KEY_RULES_MODIFIED, CACHE_KEY_RULES_DATA)
+            local rules_config, rules_err = red.load_to_cache(red.config.rules_path, red.config.rules_path_fallback, CACHE_KEY_RULES_MODIFIED, CACHE_KEY_RULES_DATA)
             if rules_err then
                 log.err("Failed to load rules from " .. (red.config.rules_path or "none") .. ": " .. rules_err)
             elseif rules_config then
@@ -152,20 +152,30 @@ end
 --- @param modified_lock string ключ словаря где хранится последний mtime файла
 --- @param data_lock string ключ словаря где хранятся данные
 --- @return table распаршенный массив данных
---- @return string описание ошибки, nil если ошибок нет
-function red.load_to_cache(path, modified_lock, data_lock)
-    local mtime = utils.get_file_mtime(path)
-    if mtime == nil then -- файла не существует
-        return nil, "file " .. tostring(path) .. " doesn't exists"
+--- @return string описание ошибки, ERR_FILE_NOT_FOUND если файла нет, nil если ошибок нет
+function red.load_to_cache(path, fallback_path, modified_lock, data_lock)
+    local load_from = path
+    local mtime, err = utils.get_file_mtime(load_from)
+    if err then
+        log.debug("try fallback ", fallback_path)
+        if fallback_path and fallback_path ~= "" then
+            load_from = fallback_path
+            mtime, err = utils.get_file_mtime(fallback_path)
+            if err then
+                return nil, err
+            end
+            log.debug("using fallback " .. fallback_path .. " instead of " .. path)
+        else
+            return nil, err
+        end
     end
     local cache_mtime = red.cache:get(modified_lock)
     -- Обновляем кеш если одно из двух:
     -- 1) cache_mtime равен nil — это первый запуск, когда кеша ещё нет => кеш надо создать
     -- 2) когда mtime файла и mtime кеша не совпадают => обновился файл => кеш надо обновить
-
     if not cache_mtime or mtime ~= cache_mtime then
         local config = cfg.new()
-        local err = config:parse_xml_file(path)
+        err = config:parse_xml_file(load_from)
         if err then
             return nil, err
         else
@@ -195,7 +205,7 @@ function red.get_runtime()
         log.debug("Using slow dynamic mode")
         local rules, locale = red.rules, red.locale
         if red.config.rules_path then
-            local config, err = red.fetch_dynamic_config(red.config.rules_path, CACHE_KEY_RULES_MODIFIED, CACHE_KEY_RULES_DATA)
+            local config, err = red.fetch_dynamic_config(red.config.rules_path, red.config.rules_path_fallback, CACHE_KEY_RULES_MODIFIED, CACHE_KEY_RULES_DATA)
             if not config then
                 log.warn("Failed to dynamically load rules by " .. red.config.rules_path .. ":" .. tostring(err or "no error"))
             else
@@ -203,7 +213,7 @@ function red.get_runtime()
             end
         end
         if red.config.langs_path then
-            local config, err = red.fetch_dynamic_config(red.config.langs_path, CACHE_KEY_LOCALE_MODIFIED, CACHE_KEY_LOCALE_DATA)
+            local config, err = red.fetch_dynamic_config(red.config.langs_path, red.config.langs_path_fallback, CACHE_KEY_LOCALE_MODIFIED, CACHE_KEY_LOCALE_DATA)
             if not config then
                 log.warn("Failed to dynamically load locales by " .. red.config.langs_path .. ":" .. tostring(err or "no error"))
             else
@@ -252,7 +262,7 @@ end
 --- @param modified_key_prefix string ключ/префикс кеша в который писать дату обновления
 --- @param data_key_prefix string ключ/префикс кеша в который писать загруженные данные
 --- @return red.config
-function red.fetch_dynamic_config(config_filename, modified_key_prefix, data_key_prefix)
+function red.fetch_dynamic_config(config_filename, config_filename_fallback, modified_key_prefix, data_key_prefix)
     -- в случае динамического пути нам нужно:
     -- 1) вычислить новый путь
     local path = red.config.variables:replace(config_filename)
@@ -266,10 +276,11 @@ function red.fetch_dynamic_config(config_filename, modified_key_prefix, data_key
 
     -- 2) загрузить в кеш конфиг. в кеш загрузятся конфиг только если нет его в кеше или файл изменился.
     --    если были изменения кеша то мы получим новые данные сразу.
-    local config, err = red.load_to_cache(path, key_modified, key_data)
+    local config, err = red.load_to_cache(path, config_filename_fallback, key_modified, key_data)
     if err then
-        return nil, "Failed to load config from `" .. (path or "none") .. "`: " .. err
-    elseif config then
+        return nil, "Failed to load config from " .. tostring(path) .. ") fallback " .. tostring(config_filename_fallback) .. ":" .. err
+    end
+    if config then
         return config
     else
         -- 3) если загрузка в кеш ничего не дала - значит в кеше уже актуальные данные, забираем из кеша
@@ -289,7 +300,7 @@ function red.route()
     end
     local rules, locale = red.get_runtime()
     if not rules then
-        log.warn("No one rules loaded")
+        log.debug("No one rules loaded")
         return
     end
 

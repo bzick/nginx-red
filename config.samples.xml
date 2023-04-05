@@ -27,8 +27,13 @@
         тегом <variable>
         Если файл есть то используются <rule> из него, вместо того что определён в этом файле.
     -->
-    <config param="rules">urlrewrite.samples.xml</config>
+    <config param="rules">urlrewrite.master.xml</config>
     <!-- <config param="rules">urlrewrite.{branch}.xml</config> -->
+    <!--
+        Указывает какой файл взять если файла из параметра rules не существует.
+        Включает валидацию файла rules каждый хит что замедляет работу nginx-red.
+    -->
+    <config param="rules-fallback">urlrewrite.samples.xml</config>
     <!--
         Путь до файла с настройками локализации, может быть абсолютный путь так и относительный путь (относительно директории этого файла)
         Поддерживает как статичный путь так и динамический - с переменными вида {branch} которые должны быть определены
@@ -37,6 +42,12 @@
     -->
     <config param="langs">langs.samples.xml</config>
     <!-- <config param="langs">langs.{branch}.xml</config>  -->
+    <!--
+        Указывает какой файл взять если файла из параметра langs не существует.
+        Включает валидацию файла langs каждый хит что замедляет работу nginx-red.
+    -->
+    <!-- <config param="langs-fallback">langs.main.xml</config>-->
+
     <!-- Период проверки и перезагрузки конфигурации с диска. Перезагружаются только те файлы которые указаны в <config> -->
     <config param="reload-timeout">30</config>
     <!-- Включение режима отладки. Error лог Nginx-а должен быть сконфижен с уровнем info. -->
