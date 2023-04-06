@@ -61,6 +61,16 @@
     <from>^/(YouTube|Youtube)/$</from>
     <to>/youtube/</to>
   </rule>
+  <rule>
+    <note>Language specific rule</note>
+    <from languages="pt-pt">^/lp/mono/$</from>
+    <to auto-lang-prefix="false">/pt-br/lp/mono/</to>
+  </rule>
+  <rule>
+    <note>Default language</note>
+    <from languages="de-de,zh-cn">^/dashboard/$</from>
+    <to auto-lang-prefix="false">/dashboard2/</to>
+  </rule>
 </urlrewrite>
 
 

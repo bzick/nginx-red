@@ -18,8 +18,8 @@ end
 local function get_stat_func()
     if OS == 'Linux' then
         ffi.cdef([[
-        long syscall(int number, ...);
-    ]])
+            long syscall(int number, ...);
+        ]])
         local ARCH = ffi.arch
 
         local stat_syscall_num
@@ -212,7 +212,7 @@ local function get_stat_func()
                 return lib.syscall(stat_syscall_num, filepath, buf, ffi.sizeof("stat"))
             end
         else
-            ffi.cdef('typedef struct {} stat;')
+            ffi.cdef('typedef struct {} stat_t;')
             return function() error("TODO support other Linux architectures") end
         end
     elseif OS == 'OSX' then

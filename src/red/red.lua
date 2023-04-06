@@ -313,12 +313,18 @@ function red.route()
             lang = nil
         end
     end
+
     if red.config.trim_suffix and red.config.trim_suffix ~= "" then
         uri = uri:gsub("%" .. red.config.trim_suffix , "")
     end
+
     --- нужно перебрать каждое правило и попробовать применить к текущему uri
     for _, rule in ipairs(rules) do
-        if red.try_rule(uri, lang, rule, locale) then
+        local rule_lang = lang
+        if not rule_lang and red.config.default_lang and rule.langs then
+            rule_lang = red.config.default_lang
+        end
+        if red.try_rule(uri, rule_lang, rule, locale) then
             return
         end
     end
@@ -334,6 +340,16 @@ end
 --- @return boolean false — условия не удовлетворяют правилам, true - всё применилось.
 ---                 хотя при редиректе до возврата из метода не дойдёт — скрипт закончится на редиректе.
 function red.try_rule(uri, lang, rule, locale)
+    -- правило имеет ограничение на язык, есть язык в uri, язык из uri не всписке языков
+    if rule.langs then
+        if not lang then
+            log.debug("try_rule: no lang")
+            return false
+        elseif not rule.langs[lang] then
+            log.debug("try_rule: not rule.langs[lang]", lang, rule)
+            return false
+        end
+    end
     local to, n = ngx.re.gsub(uri, rule.from, rule.to, rule.opts)
     local auto_lang_prefix = rule.auto_lang_prefix
     -- сработало правило, нужно определиться с действиями
@@ -341,7 +357,7 @@ function red.try_rule(uri, lang, rule, locale)
     if n == 0 or not to then -- нет совпадения по rule.from
         return false
     end
-    log.debug("Rule matched", rule)
+    log.debug("Rule matched for "..tostring(lang), rule)
     local query = ngx.var.args -- параметры запроса, всё после `?`, строкой
     if rule.cond and rule.cond_type == cfg.COND_QUERY_STRING then -- проверка condition
         local cond_check = ngx.re.match(query, rule.cond)

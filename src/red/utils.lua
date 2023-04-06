@@ -93,6 +93,18 @@ function utils.split(str, delimiter, plain)
     return result
 end
 
+--- Creates new table with keys from a list.
+--- @param keys table list of keys
+--- @param value any value for each key
+--- @return table
+function utils.combine(keys, value)
+    local t = {}
+    for _, v in pairs(keys) do
+        t[v] = value
+    end
+    return t
+end
+
 --- Возвращает mtime указанного файла
 --- @param filename string путь до файла
 --- @return number|nil если файла нет то будет возвращено nil

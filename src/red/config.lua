@@ -10,6 +10,7 @@ local log       = require("log")
 local xml2lua   = require("xml2lua")
 local handler = require("xmlhandler.tree")
 local varset     = require("varset")
+local utils     = require("utils")
 
 --- @class red.rule псевдо-тип нужен для хинтов по правилам
 --- @field from string правило совпадения URI, регулярка
@@ -19,6 +20,7 @@ local varset     = require("varset")
 --- @field to_has_query boolean to поле имеет параметры запроса (имеет ?)
 --- @field cond string
 --- @field cond_type string
+--- @field langs table<string,boolean> для каких языковых префиксов применять правила
 --- @field auto_lang_prefix boolean
 --- @field absolute boolean это абсолютная урла на другой ресурс
 --- @field query_append boolean прикреплять параметры запроса (после ?) к редиректу/реврайту
@@ -33,6 +35,7 @@ local varset     = require("varset")
 --- @field rules_path_fallback string дополнительный файл откуда брать другие правила, если rules_path нет
 --- @field langs_path string файл откуда брать языки, если путь не указан или файла нет - берутся дефолтные языки из конфига
 --- @field langs_path_fallback string дополнительный файл откуда брать другие правила, если langs_path_fallback нет
+--- @field default_lang string префикс по умолчанию для url где нет префикса
 --- @field dynamic_mode boolean импорт включает в себя динамические подстановки в langs_path и/или rules_path
 --- @field check_timeout number как часто проверять изменения файлов
 --- @field rules red.rule[] список правил
@@ -223,6 +226,8 @@ function config:set_param(param, value)
             self.langs_path_fallback = self.root_path .. "/" .. value
         end
         self.dynamic_mode = true
+    elseif param == "default-lang" then
+        self.default_lang = tostring(value)
     elseif param == "reload-timeout" then
         self.check_timeout = tonumber(value) or 10
     elseif param == "trim-suffix" then
@@ -310,6 +315,9 @@ function config.build_rule_from_xml(v)
         if v.from._attr then
             if v.from._attr["casesensitive"] == "true" then -- флаг чувстивтельности к регистру <from casesensitive="true">
                 rule.opts = nil
+            end
+            if v.from._attr["languages"] then
+                rule.langs = utils.combine(utils.split(v.from._attr["languages"], ",", true), true)
             end
         end
     else

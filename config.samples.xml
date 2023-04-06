@@ -48,6 +48,9 @@
     -->
     <!-- <config param="langs-fallback">langs.main.xml</config>-->
 
+    <!-- Языковый префикс для URI без префикса -->
+     <config param="default-lang">zh-cn</config>
+
     <!-- Период проверки и перезагрузки конфигурации с диска. Перезагружаются только те файлы которые указаны в <config> -->
     <config param="reload-timeout">30</config>
     <!-- Включение режима отладки. Error лог Nginx-а должен быть сконфижен с уровнем info. -->
