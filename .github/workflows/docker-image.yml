@@ -1,0 +1,22 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag red:latest
+    - name: Run the Docker image
+      run: docker run -d -p 8088:80 -v "$(pwd):/var/www" red:latest
+    - name: Install hurl
+      run: build/install_hurl.sh
+    - name: Start tests
+      run: /tmp/hurl --verbose --test tests/basic.hurl
+      
