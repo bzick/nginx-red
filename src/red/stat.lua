@@ -209,7 +209,7 @@ local function get_stat_func()
 
         if stat_syscall_num then
             return function(filepath, buf)
-                return lib.syscall(stat_syscall_num, filepath, buf, ffi.sizeof("stat"))
+                return lib.syscall(stat_syscall_num, filepath, buf)
             end
         else
             ffi.cdef('typedef struct {} stat_t;')
