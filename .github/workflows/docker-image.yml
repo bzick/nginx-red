@@ -16,7 +16,7 @@ jobs:
     - name: Run the Docker image
       run: docker run -d -p 8088:80 -v "$(pwd):/var/www" red:latest
     - name: Install hurl
-      run: build/install_hurl.sh
+      run: /bin/bash build/install_hurl.sh
     - name: Start tests
       run: /tmp/hurl/hurl --verbose --test tests/basic.hurl
       
