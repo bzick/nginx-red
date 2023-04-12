@@ -1,0 +1,22 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  testing:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build the Red image
+      run: docker build . --file Dockerfile --tag red:latest
+    - name: Run the Red image
+      run: export CONTAINER_ID=$(docker run -d -p 8088:80 -v "$(pwd):/var/www" red:latest)
+    - name: Install hurl
+      run: /bin/bash build/install_hurl.sh
+    - name: Start tests
+      run: /tmp/hurl/hurl --verbose --test tests/cases.hurl
+      
