@@ -122,6 +122,9 @@ function config:parse_xml(xml)
         return "Invalid XML config"
     end
     local root = h.root.urlrewrite
+    if type(root) ~= "table" then
+        return "failed to parse <urlrewrite>: mistake entity is " .. tostring(root)
+    end
 
     if root.langs then -- есть тег <langs>
         if root.langs.lang then   -- есть "массив" из <lang>
@@ -133,7 +136,10 @@ function config:parse_xml(xml)
                 self:add_lang(root.langs.lang)
             end
         end
-        if root.langs.prefix and type(root.langs.prefix) == "table" then
+        if root.langs.prefix then
+            if type(root.langs.prefix) ~= "table" then
+                return "failed to parse <prefix>: invalid entity is " .. tostring(root.langs.prefix)
+            end
             for _, prefix in pairs(root.langs.prefix) do
                 -- <prefix type="unlocalized">/store</prefix>:
                 -- prefix = {
@@ -150,7 +156,10 @@ function config:parse_xml(xml)
             end
         end
     end
-    if root.config and type(root.config) == "table" then
+    if root.config then
+        if type(root.config) ~= "table" then
+            return "failed to parse <config>: invalid entity is " .. tostring(root.config)
+        end
         if root.config._attr and root.config._attr["param"] then -- это всего одна запись <param>
             self:set_param(root.config._attr["param"], root.config[1])
         else -- иначе это массив параметров
@@ -160,7 +169,10 @@ function config:parse_xml(xml)
         end
     end
     -- разбор тегов <variable>
-    if root.variable and type(root.variable) == "table" then
+    if root.variable then
+        if type(root.variable) ~= "table" then
+            return "failed to parse <variable>: invalid entity is " .. tostring(root.variable)
+        end
         if root.variable._attr then -- один элемент <variable>
             self:add_variable(root.variable._attr["name"], root.variable._attr["default"], root.variable)
         else -- несколько элементов <variable>
@@ -176,7 +188,10 @@ function config:parse_xml(xml)
     --    <from>^/search/$</from>
     --    <to type="permanent-redirect">/?s=full</to>
     --  </rule>
-    if root.rule and type(root.rule) == "table" then
+    if root.rule then
+        if type(root.rule) ~= "table" then
+            return "failed to parse <rule>: invalid entity is " .. tostring(root.rule)
+        end
         for _, v in pairs(root.rule) do
             local rule, err = config.build_rule_from_xml(v)
             if err then

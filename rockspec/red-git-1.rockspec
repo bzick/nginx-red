@@ -7,7 +7,6 @@ description = {
     summary = "Exec redirect rules",
 }
 dependencies = {
-    "xml2lua >= 1.4",
     "lua-messagepack == 0.5.2-1",
     "lua-resty-cookie"
 }
