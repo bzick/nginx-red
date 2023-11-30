@@ -1,7 +1,7 @@
 package = "red"
 version = "git-1"
 source = {
-    url = "https://github.com/bzick/redirector/-/archive/master/pylon-master.zip"
+    url = "https://github.com/bzick/nginx-red/archive/refs/tags/1.17.zip"
 }
 description = {
     summary = "Exec redirect rules",

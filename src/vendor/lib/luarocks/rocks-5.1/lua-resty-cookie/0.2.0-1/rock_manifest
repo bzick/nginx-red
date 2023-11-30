@@ -1,0 +1,11 @@
+rock_manifest = {
+   doc = {
+      ["README.md"] = "01aecbb0d564cba0a2d5279b4cbe285a"
+   },
+   lua = {
+      resty = {
+         ["cookie.lua"] = "9316d77367f3c23a997c83b9a5ffe877"
+      }
+   },
+   ["lua-resty-cookie-0.2.0-1.rockspec"] = "62ddba30eed9eaa586639e278b06cb94"
+}

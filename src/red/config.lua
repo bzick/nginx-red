@@ -180,6 +180,7 @@ function config:parse_xml(xml)
                 self:add_variable(variable._attr["name"], variable._attr["default"], variable)
             end
         end
+        log.debug("root.variable", self.variables)
     end
     -- Список правил
     -- <urlrewrite>
@@ -259,7 +260,15 @@ function config:add_variable(name, default, loaders)
     end
     local var = self.variables:add_variable(name, default)
     for from, what in pairs(loaders) do
-        var:add_loader(from, what)
+        if from == "value" and type(what) == "table" then
+            for _, v in ipairs(what) do
+                if v._attr.from and v[1] then -- <value from="...">...</value>
+                    var:add_loader(v._attr.from, v[1])
+                end
+            end
+        else
+            var:add_loader(from, what)
+        end
     end
 end
 

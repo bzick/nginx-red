@@ -11,15 +11,15 @@
     </langs>
     <variable name="branch" default="master">
         <!-- значение из куки -->
-        <cookie>some_name</cookie>
+        <value from="cookie">some_name</value>
         <!-- значение из аргументов запроса (те что после `?` в URL) -->
-        <arg>some_name</arg>
+        <value from="arg">some_name</value>
         <!-- значение переменной окружения (нужно так же разрешить эту переменную в конфигурации nginx) -->
-        <env>SOME_NAME</env>
+        <value from="env">SOME_NAME</value>
         <!-- переменная из nginx $some_name в процессе выполнения запроса -->
-        <nginx>some_name</nginx>
+        <value from="nginx">some_name</value>
         <!-- значение заголовка запроса -->
-        <header>some_name</header>
+        <value from="header">some_name</value>
     </variable>
     <!--
         Путь до файла с правилами, может быть абсолютный путь так и относительный путь (относительно директории этого файла)

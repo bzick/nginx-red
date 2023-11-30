@@ -1,0 +1,47 @@
+rock_manifest = {
+   doc = {
+      ["README.markdown"] = "bf388b73511d8a0973f5ec3cf6c42dca"
+   },
+   lua = {
+      ngx = {
+         ["balancer.lua"] = "c8bacd758e6e5ea2b20f593bcb50c0e1",
+         ["base64.lua"] = "5c3ff5e19c3c5a235bd58a107a10cf2d",
+         ["errlog.lua"] = "6f57281851bb8b4df2df96f8d3df5b90",
+         ["ocsp.lua"] = "6066b7a32fcc0a509f6596fec67596cc",
+         ["pipe.lua"] = "51d958a0a8415bc15d075853526d7860",
+         ["process.lua"] = "d4d7ebd967999a24105d90beea1778f3",
+         ["re.lua"] = "65e113c68b7589cc2f1a3bfaeeb167e0",
+         ["req.lua"] = "fb25514c30a2ee6ea04053985ddd6f64",
+         ["resp.lua"] = "5167f2d7f5538052b7ffc4a0fba9d56b",
+         ["semaphore.lua"] = "15373cfc3815b57f92263c0dd998fd43",
+         ssl = {
+            ["session.lua"] = "05bc641bb55894004f07f80aaa82e40d"
+         },
+         ["ssl.lua"] = "9066153aa8ac4dc5f5f11b872ec0d77c"
+      },
+      resty = {
+         core = {
+            ["base.lua"] = "315880ab27a22b8344e54df396028ec9",
+            ["base64.lua"] = "f495f59c752055b59d8747ff405b2261",
+            ["ctx.lua"] = "cfeb0118bfca9890a7b5dea4471eacc8",
+            ["exit.lua"] = "6d3956b798ea5942a0b8408382ea3acc",
+            ["hash.lua"] = "f9604a4945e534403ee719c7475697b2",
+            ["misc.lua"] = "b7b277831b27cd434bd85941f42b7ab0",
+            ["ndk.lua"] = "49222e0ea8332f85a90fa7831c46ecab",
+            ["phase.lua"] = "38a07be8bf19649fdd7745c0870d7e16",
+            ["regex.lua"] = "e5a4acff819e68f5d386a339ce6978fc",
+            ["request.lua"] = "331468e5d3e803bc3de24a8b565a9b6b",
+            ["response.lua"] = "7ec92f35cba19d8e0331b391e33d4d2f",
+            ["shdict.lua"] = "caede774863b9954bd9bf2e44e86b026",
+            ["socket.lua"] = "39dfb3a5e18ac8ded2ffaa2ded5e8a99",
+            ["time.lua"] = "fab763b588f9e0a3ff22468fb5487108",
+            ["uri.lua"] = "b774d9648f38c12559b2b0a0fbb7fe27",
+            ["utils.lua"] = "002687227f2553adaa77d1da92c53306",
+            ["var.lua"] = "a83a47476d8a06fabf482f46b93c7ab4",
+            ["worker.lua"] = "166951fdfeb524253f95209a4c6ff527"
+         },
+         ["core.lua"] = "8e52fad6d97b0f81909f0ae679c79e39"
+      }
+   },
+   ["lua-resty-core-0.1.21-1.rockspec"] = "37d08bb5bf4a73fec4a5d049caa086ac"
+}
