@@ -31,7 +31,7 @@ dependencies = {
       }
    },
    ["lua-resty-core"] = {
-      ["0.1.21-1"] = {}
+      ["0.1.34rc3-1"] = {}
    },
    ["lua-resty-lrucache"] = {
       ["0.10-1"] = {}
@@ -66,100 +66,118 @@ modules = {
       "xml2lua/1.6-1"
    },
    ["ngx.balancer"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["ngx.base64"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["ngx.errlog"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["ngx.ocsp"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["ngx.pipe"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["ngx.process"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
+   },
+   ["ngx.proxyssl"] = {
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["ngx.re"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["ngx.req"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["ngx.resp"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["ngx.semaphore"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["ngx.ssl"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
+   },
+   ["ngx.ssl.clienthello"] = {
+      "lua-resty-core/0.1.34rc3-1"
+   },
+   ["ngx.ssl.proxysslcert"] = {
+      "lua-resty-core/0.1.34rc3-1"
+   },
+   ["ngx.ssl.proxysslverify"] = {
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["ngx.ssl.session"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["resty.cookie"] = {
       "lua-resty-cookie/0.2.0-1"
    },
    ["resty.core"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["resty.core.base"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["resty.core.base64"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
+   },
+   ["resty.core.coroutine"] = {
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["resty.core.ctx"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["resty.core.exit"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["resty.core.hash"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["resty.core.misc"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["resty.core.ndk"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
+   },
+   ["resty.core.param"] = {
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["resty.core.phase"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["resty.core.regex"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["resty.core.request"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["resty.core.response"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["resty.core.shdict"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["resty.core.socket"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["resty.core.time"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["resty.core.uri"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["resty.core.utils"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["resty.core.var"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["resty.core.worker"] = {
-      "lua-resty-core/0.1.21-1"
+      "lua-resty-core/0.1.34rc3-1"
    },
    ["resty.lrucache"] = {
       "lua-resty-lrucache/0.10-1"
@@ -206,7 +224,7 @@ repository = {
       }
    },
    ["lua-resty-core"] = {
-      ["0.1.21-1"] = {
+      ["0.1.34rc3-1"] = {
          {
             arch = "installed",
             commands = {},
@@ -218,20 +236,26 @@ repository = {
                ["ngx.ocsp"] = "ngx/ocsp.lua",
                ["ngx.pipe"] = "ngx/pipe.lua",
                ["ngx.process"] = "ngx/process.lua",
+               ["ngx.proxyssl"] = "ngx/proxyssl.lua",
                ["ngx.re"] = "ngx/re.lua",
                ["ngx.req"] = "ngx/req.lua",
                ["ngx.resp"] = "ngx/resp.lua",
                ["ngx.semaphore"] = "ngx/semaphore.lua",
                ["ngx.ssl"] = "ngx/ssl.lua",
+               ["ngx.ssl.clienthello"] = "ngx/ssl/clienthello.lua",
+               ["ngx.ssl.proxysslcert"] = "ngx/ssl/proxysslcert.lua",
+               ["ngx.ssl.proxysslverify"] = "ngx/ssl/proxysslverify.lua",
                ["ngx.ssl.session"] = "ngx/ssl/session.lua",
                ["resty.core"] = "resty/core.lua",
                ["resty.core.base"] = "resty/core/base.lua",
                ["resty.core.base64"] = "resty/core/base64.lua",
+               ["resty.core.coroutine"] = "resty/core/coroutine.lua",
                ["resty.core.ctx"] = "resty/core/ctx.lua",
                ["resty.core.exit"] = "resty/core/exit.lua",
                ["resty.core.hash"] = "resty/core/hash.lua",
                ["resty.core.misc"] = "resty/core/misc.lua",
                ["resty.core.ndk"] = "resty/core/ndk.lua",
+               ["resty.core.param"] = "resty/core/param.lua",
                ["resty.core.phase"] = "resty/core/phase.lua",
                ["resty.core.regex"] = "resty/core/regex.lua",
                ["resty.core.request"] = "resty/core/request.lua",

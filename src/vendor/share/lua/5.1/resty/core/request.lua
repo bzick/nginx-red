@@ -10,6 +10,7 @@ local subsystem = ngx.config.subsystem
 local FFI_BAD_CONTEXT = base.FFI_BAD_CONTEXT
 local FFI_DECLINED = base.FFI_DECLINED
 local FFI_OK = base.FFI_OK
+local clear_tab = base.clear_tab
 local new_tab = base.new_tab
 local C = ffi.C
 local ffi_cast = ffi.cast
@@ -19,6 +20,7 @@ local get_string_buf = base.get_string_buf
 local get_size_ptr = base.get_size_ptr
 local setmetatable = setmetatable
 local lower = string.lower
+local find = string.find
 local rawget = rawget
 local ngx = ngx
 local get_request = base.get_request
@@ -40,6 +42,8 @@ local ngx_lua_ffi_req_start_time
 if subsystem == "stream" then
     ffi.cdef[[
     double ngx_stream_lua_ffi_req_start_time(ngx_stream_lua_request_t *r);
+    int ngx_stream_lua_ffi_req_dst_addr(ngx_stream_lua_request_t *r, char *buf,
+        size_t *buf_size, char *errbuf, size_t *errbuf_size);
     ]]
 
     ngx_lua_ffi_req_start_time = C.ngx_stream_lua_ffi_req_start_time
@@ -64,6 +68,26 @@ end
 
 
 if subsystem == "stream" then
+    local ERR_BUF_SIZE = 256
+
+    local buf = get_string_buf(128, 1)
+    local buf_sizep = ffi_new("size_t[1]")
+
+    function ngx.req.get_original_addr()
+        local rc
+        local r = get_request()
+        local err = get_string_buf(ERR_BUF_SIZE)
+        local errlenp = get_size_ptr()
+        buf_sizep[0] = 128
+        errlenp[0] = ERR_BUF_SIZE
+        rc = C.ngx_stream_lua_ffi_req_dst_addr(r, buf, buf_sizep, err, errlenp)
+        if tonumber(rc) ~= 0 then
+            return nil, ffi_str(err, errlenp[0])
+        end
+
+        return ffi_str(buf, buf_sizep[0])
+    end
+
     return _M
 end
 
@@ -113,7 +137,12 @@ local truncated = ffi.new("int[1]")
 
 local req_headers_mt = {
     __index = function (tb, key)
-        return rawget(tb, (str_replace_char(lower(key), '_', '-')))
+        key = lower(key)
+        local value = rawget(tb, key)
+        if value == nil and find(key, '_', 1, true) then
+            value = rawget(tb, (str_replace_char(key, '_', '-')))
+        end
+        return value
     end
 }
 
@@ -192,7 +221,7 @@ function ngx.req.get_headers(max_headers, raw)
 end
 
 
-function ngx.req.get_uri_args(max_args)
+function ngx.req.get_uri_args(max_args, tab)
     local r = get_request()
     if not r then
         error("no request found")
@@ -202,13 +231,17 @@ function ngx.req.get_uri_args(max_args)
         max_args = -1
     end
 
+    if tab then
+        clear_tab(tab)
+    end
+
     local n = C.ngx_http_lua_ffi_req_get_uri_args_count(r, max_args, truncated)
     if n == FFI_BAD_CONTEXT then
         error("API disabled in the current context", 2)
     end
 
     if n == 0 then
-        return {}
+        return tab or {}
     end
 
     local args_len = C.ngx_http_lua_ffi_req_get_querystring_len(r)
@@ -218,7 +251,7 @@ function ngx.req.get_uri_args(max_args)
 
     local nargs = C.ngx_http_lua_ffi_req_get_uri_args(r, strbuf, kvbuf, n)
 
-    local args = new_tab(0, nargs)
+    local args = tab or new_tab(0, nargs)
     for i = 0, nargs - 1 do
         local arg = kvbuf[i]
 

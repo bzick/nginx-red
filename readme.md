@@ -80,7 +80,7 @@ luarocks install --lua-dir=/usr/local/opt/lua@5.1 --tree ./src/vendor --no-doc -
 Часть зависимостей не указаны в списке зависмостей, так как они сильно завязаны на версию `nginx` и модуль `lua-nginx-module`
 Обновление `resty-core`, версия зависит от `lua-nginx-module`.
 ```bash
-luarocks install --lua-dir=/usr/local/opt/lua@5.1 --tree ./src/vendor --no-doc --no-manifest ./rockspec/lua-resty-core-0.1.21-1.rockspec
+luarocks install --lua-dir=/usr/local/opt/lua@5.1 --tree ./src/vendor --no-doc --no-manifest ./rockspec/lua-resty-core-0.1.34rc3-1.rockspec
 ```
 Обновление `lua-resty-lrucache`, версия зависит от `resty-core`
 ```bash

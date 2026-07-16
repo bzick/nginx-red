@@ -10,5 +10,5 @@ test:
 vendor-homebrew:
 	luarocks install --lua-dir=/opt/homebrew/opt/luajit --tree ./src/vendor --no-doc --only-deps ./rockspec/red-git-1.rockspec
 	luarocks install --lua-dir=/opt/homebrew/opt/luajit --tree ./src/vendor --no-doc ./rockspec/xml2lua-1.6-1.rockspec
-	luarocks install --lua-dir=/opt/homebrew/opt/luajit --tree ./src/vendor --no-doc ./rockspec/lua-resty-core-0.1.21-1.rockspec
+	luarocks install --lua-dir=/opt/homebrew/opt/luajit --tree ./src/vendor --no-doc ./rockspec/lua-resty-core-0.1.34rc3-1.rockspec
 	luarocks install --lua-dir=/opt/homebrew/opt/luajit --tree ./src/vendor --no-doc ./rockspec/lua-resty-lrucache-0.10-1.rockspec
