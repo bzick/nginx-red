@@ -3,6 +3,7 @@
 
 local ffi = require 'ffi'
 local ffi_new = ffi.new
+local pcall = pcall
 local error = error
 local select = select
 local ceil = math.ceil
@@ -16,25 +17,26 @@ local FREE_LIST_REF = 0
 
 
 if subsystem == 'http' then
-    local ngx_lua_v = ngx.config.ngx_lua_version
     if not ngx.config
        or not ngx.config.ngx_lua_version
-       or (ngx_lua_v ~= 10018 and ngx_lua_v ~= 10019)
+       or ngx.config.ngx_lua_version ~= 10031
     then
-        error("ngx_http_lua_module 0.10.18 or 0.10.19 required")
+        local ver = ngx.config and tostring(ngx.config.ngx_lua_version) or 'nil'
+        error("ngx_http_lua_module 0.10.31 required but got " .. ver)
     end
 
 elseif subsystem == 'stream' then
     if not ngx.config
        or not ngx.config.ngx_lua_version
-       or ngx.config.ngx_lua_version ~= 9
+       or ngx.config.ngx_lua_version ~= 19
     then
-        error("ngx_stream_lua_module 0.0.9 required")
+        local ver = ngx.config and tostring(ngx.config.ngx_lua_version) or 'nil'
+        error("ngx_stream_lua_module 0.0.19 required but got " .. ver)
     end
 
 else
-    error("ngx_http_lua_module 0.10.18 or "
-          .. "ngx_stream_lua_module 0.0.9 required")
+    error("ngx_http_lua_module 0.10.31 or "
+          .. "ngx_stream_lua_module 0.0.19 required")
 end
 
 
@@ -69,9 +71,17 @@ end
 do
     local orig_require = require
     local pkg_loaded = package.loaded
+    -- the key_sentinel is inserted into package.loaded before
+    -- the chunk is executed and replaced if the chunk completes normally.
+    local key_sentinel = pkg_loaded[...]
+
     local function my_require(name)
         local mod = pkg_loaded[name]
         if mod then
+            if mod == key_sentinel then
+                error("loop or previous error loading module '" .. name .. "'")
+            end
+
             return mod
         end
         return orig_require(name)
@@ -133,7 +143,7 @@ local c_buf_type = ffi.typeof("char[?]")
 local _M = new_tab(0, 18)
 
 
-_M.version = "0.1.21"
+_M.version = "0.1.34"
 _M.new_tab = new_tab
 _M.clear_tab = clear_tab
 
@@ -182,7 +192,8 @@ end
 function _M.get_string_buf(size, must_alloc)
     -- ngx.log(ngx.ERR, "str buf size: ", str_buf_size)
     if size > str_buf_size or must_alloc then
-        return ffi_new(c_buf_type, size)
+        local buf = ffi_new(c_buf_type, size)
+        return buf
     end
 
     if not str_buf then
@@ -211,6 +222,16 @@ function _M.ref_in_table(tb, key)
 end
 
 
+-- Release a slot acquired via ref_in_table() back to the free list.
+-- Mirrors the layout used by luaL_ref / luaL_unref on the C side (both
+-- use the slot at FREE_LIST_REF as the free-list head), so tables shared
+-- with luaL_ref/unref (e.g. ngx_lua_ctx_tables) stay consistent.
+function _M.unref_in_table(tb, ref)
+    tb[ref] = tb[FREE_LIST_REF]
+    tb[FREE_LIST_REF] = ref
+end
+
+
 function _M.allows_subsystem(...)
     local total = select("#", ...)
 
@@ -232,6 +253,7 @@ _M.FFI_AGAIN = -2
 _M.FFI_BUSY = -3
 _M.FFI_DONE = -4
 _M.FFI_DECLINED = -5
+_M.FFI_ABORT = -6
 
 
 do

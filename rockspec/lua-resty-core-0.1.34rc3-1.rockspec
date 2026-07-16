@@ -1,8 +1,8 @@
 package = "lua-resty-core"
-version = "0.1.21-1"
+version = "0.1.34rc3-1"
 source = {
     url = "git://github.com/openresty/lua-resty-core",
-    tag = "v0.1.21",
+    tag = "v0.1.34rc3",
 }
 description = {
     summary = "New FFI-based Lua API for ngx_http_lua_module and/or ngx_stream_lua_module.",
@@ -23,8 +23,12 @@ build = {
         ["ngx.errlog"] = "lib/ngx/errlog.lua",
         ["ngx.process"] = "lib/ngx/process.lua",
         ["ngx.balancer"] = "lib/ngx/balancer.lua",
+        ["ngx.proxyssl"] = "lib/ngx/proxyssl.lua",
         ["ngx.semaphore"] = "lib/ngx/semaphore.lua",
         ["ngx.ssl.session"] = "lib/ngx/ssl/session.lua",
+        ["ngx.ssl.clienthello"] = "lib/ngx/ssl/clienthello.lua",
+        ["ngx.ssl.proxysslcert"] = "lib/ngx/ssl/proxysslcert.lua",
+        ["ngx.ssl.proxysslverify"] = "lib/ngx/ssl/proxysslverify.lua",
         ["resty.core"] = "lib/resty/core.lua",
         ["resty.core.ctx"] = "lib/resty/core/ctx.lua",
         ["resty.core.ndk"] = "lib/resty/core/ndk.lua",
@@ -35,6 +39,7 @@ build = {
         ["resty.core.hash"] = "lib/resty/core/hash.lua",
         ["resty.core.misc"] = "lib/resty/core/misc.lua",
         ["resty.core.time"] = "lib/resty/core/time.lua",
+        ["resty.core.param"] = "lib/resty/core/param.lua",
         ["resty.core.phase"] = "lib/resty/core/phase.lua",
         ["resty.core.regex"] = "lib/resty/core/regex.lua",
         ["resty.core.utils"] = "lib/resty/core/utils.lua",
@@ -44,5 +49,6 @@ build = {
         ["resty.core.worker"] = "lib/resty/core/worker.lua",
         ["resty.core.request"] = "lib/resty/core/request.lua",
         ["resty.core.response"] = "lib/resty/core/response.lua",
+        ["resty.core.coroutine"] = "lib/resty/core/coroutine.lua",
     }
 }

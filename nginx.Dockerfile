@@ -1,12 +1,13 @@
 FROM alpine:3.14
 
-ARG NGINX_VERSION=1.21.3
+ARG NGINX_VERSION=1.31.0
 
 # see https://github.com/vision5/ngx_devel_kit/tags
-ARG NGINX_DEVEL_KIT=0.3.1
+ARG NGINX_DEVEL_KIT=0.3.4
 
 # see https://github.com/openresty/lua-nginx-module#nginx-compatibility
-ARG LUA_NGINX_MODULE=0.10.19
+# lua-resty-core 0.1.34rc3 requires ngx_http_lua_module exactly 0.10.31
+ARG LUA_NGINX_MODULE=0.10.31
 
 # for lua module see https://github.com/openresty/docker-openresty/blob/master/alpine/Dockerfile
 ENV CONFIG="\

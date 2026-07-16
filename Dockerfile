@@ -1,5 +1,6 @@
 
-FROM openresty/openresty:alpine
+# OpenResty 1.31.1.1 ships ngx_http_lua_module 0.10.31, required by lua-resty-core 0.1.34rc3
+FROM openresty/openresty:1.31.1.1-alpine
 
 RUN apk update && apk add curl wget htop bash
 
