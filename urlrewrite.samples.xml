@@ -5,6 +5,10 @@
     <from>^/search/$</from>
     <to type="permanent-redirect">/?s=full</to>
   </rule>
+  <rule><!-- Captured path segments must not change the redirect host -->
+    <from>^/([^/]+)/specials/([^/]+)/.*\.jsp$</from>
+    <to>/$1/promo/$2/</to>
+  </rule>
   <rule><!-- using query string condition -->
     <note>Some note</note>
     <condition type="query-string">.*Keyword.*</condition>
@@ -25,6 +29,22 @@
     <note>Some note</note>
     <from>^/bzick/nginx-red/$</from>
     <to>https://github.com/bzick/nginx-red?v2</to>
+  </rule>
+  <rule><!-- Literal external host with a captured path -->
+    <from>^/allowed-external/([a-z]+)/$</from>
+    <to>https://example.invalid/promo/$1/</to>
+  </rule>
+  <rule><!-- Captures must not choose an external host -->
+    <from>^/dynamic-host/([a-z]+)/$</from>
+    <to>https://$1.example.invalid/promo/</to>
+  </rule>
+  <rule><!-- An unsafe redirect lets the next rule run -->
+    <from>^/fallback/([^/]+)/$</from>
+    <to>/$1/</to>
+  </rule>
+  <rule>
+    <from>^/fallback/[^/]+/$</from>
+    <to>/safe/</to>
   </rule>
   <rule><!-- using placeholders in 'to' tag -->
     <note>Reducing the number of pages</note>
@@ -72,5 +92,3 @@
     <to auto-lang-prefix="false">/dashboard2/</to>
   </rule>
 </urlrewrite>
-
-
