@@ -46,6 +46,30 @@
     <from>^/fallback/[^/]+/$</from>
     <to>/safe/</to>
   </rule>
+  <rule><!-- trim-target-suffix is configured in config.samples.xml -->
+    <from>^/trim/local/$</from>
+    <to>/docs/index.html?view=full</to>
+  </rule>
+  <rule>
+    <from>^/trim/external/$</from>
+    <to qsappend="false">https://example.invalid/docs/index.html#intro</to>
+  </rule>
+  <rule>
+    <from>^/trim/root/$</from>
+    <to>/index.html</to>
+  </rule>
+  <rule>
+    <from>^/trim/legacy/$</from>
+    <to>/docs/index.htm</to>
+  </rule>
+  <rule>
+    <from>^/trim/query/$</from>
+    <to>/docs/?next=/index.html</to>
+  </rule>
+  <rule>
+    <from>^/trim/forward/$</from>
+    <to type="forwarding">/forwarded/index.html</to>
+  </rule>
   <rule><!-- using placeholders in 'to' tag -->
     <note>Reducing the number of pages</note>
     <from>^/all_([0-9]{4})\.jsp$</from>

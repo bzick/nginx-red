@@ -66,6 +66,31 @@ local function redirect_allowed(rule, destination)
     return allowed_origin ~= nil and configured_origin(trimmed) == allowed_origin
 end
 
+--- Удаляет самый длинный подходящий суффикс из пути, сохраняя query и fragment.
+local function trim_target_suffix(url, suffixes)
+    if not suffixes or #suffixes == 0 then
+        return url
+    end
+    local target = url:match("^[^?#]*")
+    local origin = target:match("^[%a][%w+%.%-]*://[^/]+") or ""
+    local path = target:sub(#origin + 1)
+    local suffix
+    for _, candidate in ipairs(suffixes) do
+        if candidate ~= "" and path:sub(-#candidate) == candidate
+            and (not suffix or #candidate > #suffix) then
+            suffix = candidate
+        end
+    end
+    if not suffix then
+        return url
+    end
+    local trimmed = path:sub(1, #path - #suffix)
+    if trimmed == "" then
+        trimmed = (origin ~= "" or path:sub(1, 1) == "/") and "/" or "./"
+    end
+    return origin .. trimmed .. url:sub(#target + 1)
+end
+
 --- Начальная инициализация приложения
 --- 1) загрузка базового конифга
 function red.init()
@@ -420,10 +445,12 @@ function red.try_rule(uri, lang, rule, locale)
             to = to .. "?" .. query
         end
     end
-    if (rule.to_type == cfg.REDIRECT_PERM or rule.to_type == cfg.REDIRECT_TEMP)
-        and not redirect_allowed(rule, to) then
-        log.warn("Unsafe redirect blocked for rule: " .. rule.from)
-        return false
+    to = trim_target_suffix(to, red.config.trim_target_suffixes)
+    if rule.to_type == cfg.REDIRECT_PERM or rule.to_type == cfg.REDIRECT_TEMP then
+        if not redirect_allowed(rule, to) then
+            log.warn("Unsafe redirect blocked for rule: " .. rule.from)
+            return false
+        end
     end
     -- далее выполняем правило, если правило кривое (кривой to_type) то будем возвращать false
     if rule.to_type == cfg.REDIRECT_PERM then

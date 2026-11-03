@@ -57,4 +57,7 @@
     <config param="debug">false</config>
     <!-- Removes a specific suffix from a URL before matching rules -->
     <config param="trim-suffix">index.html</config>
+    <!-- Removes the longest matching suffix from the destination path after a redirect or forwarding rule matches -->
+    <config param="trim-target-suffix">/index.html</config>
+    <config param="trim-target-suffix">/index.htm</config>
 </urlrewrite>

@@ -27,6 +27,31 @@ GET http://127.0.0.1:8088/fallback/%5Cexample.invalid/
 HTTP 302
 Location: /safe/
 
+# The global trim-target-suffix affects only the final path.
+GET http://127.0.0.1:8088/trim/local/?source=campaign
+HTTP 302
+Location: /docs?view=full&source=campaign
+
+GET http://127.0.0.1:8088/trim/external/
+HTTP 302
+Location: https://example.invalid/docs#intro
+
+GET http://127.0.0.1:8088/trim/root/
+HTTP 302
+Location: /
+
+GET http://127.0.0.1:8088/trim/legacy/
+HTTP 302
+Location: /docs
+
+GET http://127.0.0.1:8088/trim/query/
+HTTP 302
+Location: /docs/?next=/index.html
+
+GET http://127.0.0.1:8088/trim/forward/
+HTTP 418
+X-Request-Uri: /forwarded
+
 # test `languages` attribute
 GET http://127.0.0.1:8088/pt-pt/lp/mono/
 HTTP 302
