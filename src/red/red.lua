@@ -30,6 +30,42 @@ local red = {
     cache = cache,
 }
 
+--- Возвращает origin только для HTTP(S)-адреса с буквальным хостом.
+local function configured_origin(url)
+    local scheme, authority = url:match("^([%a][%w+%.%-]*)://([^/?#\\]+)")
+    if not scheme or not authority then
+        return nil
+    end
+    scheme = scheme:lower()
+    if scheme ~= "http" and scheme ~= "https" then
+        return nil
+    end
+    if authority:find("$", 1, true) or authority:find("@", 1, true)
+        or authority:find("%", 1, true) or authority:find("%s") then
+        return nil
+    end
+    return scheme .. "://" .. authority:lower()
+end
+
+--- Проверяет итоговый адрес редиректа относительно origin из правила.
+local function redirect_allowed(rule, destination)
+    local path = destination:match("^[^?#]*")
+    if path:find("%c") then
+        return false
+    end
+    -- Браузеры отбрасывают начальные пробелы и считают обратную косую черту
+    -- разделителем в HTTP(S)-адресах. //host и /\host меняют хост.
+    local trimmed = path:gsub("^ +", "")
+    local first, second = trimmed:sub(1, 1), trimmed:sub(2, 2)
+    local needs_origin_check = ((first == "/" or first == "\\") and (second == "/" or second == "\\"))
+        or trimmed:match("^[%a][%w+%.%-]*:") ~= nil
+    if not needs_origin_check then
+        return true
+    end
+    local allowed_origin = configured_origin(rule.to)
+    return allowed_origin ~= nil and configured_origin(trimmed) == allowed_origin
+end
+
 --- Начальная инициализация приложения
 --- 1) загрузка базового конифга
 function red.init()
@@ -330,15 +366,14 @@ function red.route()
     end
 end
 
---- Пробует применить правило.
---- Если правило проходит все условия то вызывается редирект. Прямо в методе.
---- В случае редиректа скрипт закончится прямо в методе.
+--- Пробует применить правило к URI.
+--- Если цель редиректа небезопасна, правило пропускается.
 --- @param uri string текущий URI запроса, без языкового префикса
 --- @param lang string|nil языковый префикс, если он был у запроса
 --- @param rule red.rule само правило которое надо попробовать применить
 --- @param locale red.locale настройки локализации
---- @return boolean false — условия не удовлетворяют правилам, true - всё применилось.
----                 хотя при редиректе до возврата из метода не дойдёт — скрипт закончится на редиректе.
+--- @return boolean false — правило не применяется, можно проверить следующее.
+---                 true — правило применилось; следующие правила не проверяются.
 function red.try_rule(uri, lang, rule, locale)
     -- правило имеет ограничение на язык, есть язык в uri, язык из uri не всписке языков
     if rule.langs then
@@ -384,6 +419,11 @@ function red.try_rule(uri, lang, rule, locale)
         else
             to = to .. "?" .. query
         end
+    end
+    if (rule.to_type == cfg.REDIRECT_PERM or rule.to_type == cfg.REDIRECT_TEMP)
+        and not redirect_allowed(rule, to) then
+        log.warn("Unsafe redirect blocked for rule: " .. rule.from)
+        return false
     end
     -- далее выполняем правило, если правило кривое (кривой to_type) то будем возвращать false
     if rule.to_type == cfg.REDIRECT_PERM then
