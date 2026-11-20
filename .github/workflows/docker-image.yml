@@ -13,6 +13,8 @@ jobs:
     - uses: actions/checkout@v3
     - name: Build the Red image
       run: docker build . --file Dockerfile --tag red:latest
+    - name: Test target suffix trimming
+      run: docker run --rm -w /var/www --entrypoint /usr/local/openresty/luajit/bin/luajit red:latest tests/trim_target_suffix.lua
     - name: Run the Red image
       run: export CONTAINER_ID=$(docker run -d -p 8088:80 -v "$(pwd):/var/www" red:latest)
     - name: Install hurl
