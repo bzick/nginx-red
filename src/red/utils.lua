@@ -93,6 +93,16 @@ function utils.split(str, delimiter, plain)
     return result
 end
 
+--- Отделяет query/fragment, сохраняя хвост вместе с разделителями без изменений.
+--- @param url string
+--- @param include_fragment boolean|nil учитывать # как начало хвоста, по умолчанию true
+--- @return string часть URL до хвоста
+--- @return string хвост с ? или #, либо пустая строка
+function utils.split_url_tail(url, include_fragment)
+    local pattern = include_fragment == false and "^([^?]*)(.*)$" or "^([^?#]*)(.*)$"
+    return url:match(pattern)
+end
+
 --- Creates new table with keys from a list.
 --- @param keys table list of keys
 --- @param value any value for each key

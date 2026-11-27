@@ -49,7 +49,7 @@ end
 
 --- Проверяет итоговый адрес редиректа относительно origin из правила.
 local function redirect_allowed(rule, destination)
-    local path = destination:match("^[^?#]*")
+    local path = utils.split_url_tail(destination)
     if path:find("%c") then
         return false
     end
@@ -71,7 +71,7 @@ local function trim_target_suffix(url, suffixes)
     if not suffixes or #suffixes == 0 then
         return url
     end
-    local target = url:match("^[^?#]*")
+    local target, tail = utils.split_url_tail(url)
     local origin = target:match("^[%a][%w+%.%-]*://[^/]+") or ""
     local path = target:sub(#origin + 1)
     local suffix
@@ -88,7 +88,23 @@ local function trim_target_suffix(url, suffixes)
     if trimmed == "" then
         trimmed = (origin ~= "" or path:sub(1, 1) == "/") and "/" or "./"
     end
-    return origin .. trimmed .. url:sub(#target + 1)
+    return origin .. trimmed .. tail
+end
+
+--- Возвращает каталог исходного запроса для настроенного индексного файла.
+local function canonical_index_target(request_uri, suffixes)
+    local path, query = utils.split_url_tail(request_uri, false)
+    if path:sub(1, 1) ~= "/" or path:find("//", 1, true)
+        or path:find("\\", 1, true) or path:find("%c")
+        or path:lower():find("%%2f") or path:lower():find("%%5c") then
+        return nil
+    end
+    local directory, filename = path:match("^(.*/)([^/]+)$")
+    for _, suffix in ipairs(suffixes) do
+        if filename == suffix then
+            return directory .. query
+        end
+    end
 end
 
 --- Начальная инициализация приложения
@@ -352,8 +368,14 @@ function red.fetch_dynamic_config(config_filename, config_filename_fallback, mod
     end
 end
 
---- Ищет и применяет правило к текущему запросу
+--- Канонизирует индексную страницу, затем ищет и применяет XML-правило.
 function red.route()
+    if #red.config.remove_suffixes > 0 then
+        local to = canonical_index_target(ngx.var.request_uri, red.config.remove_suffixes)
+        if to then
+            return ngx.redirect(to, 301)
+        end
+    end
     local uri = ngx.var.uri
     local lang
     if uri == "/" then

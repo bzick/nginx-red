@@ -42,6 +42,7 @@ local utils     = require("utils")
 --- @field locale red.locale список правил
 --- @field variables red.varset набор переменных
 --- @field trim_suffix string suffix to be removed
+--- @field remove_suffixes string[] имена индексных файлов для внешнего редиректа на каталог
 --- @field trim_target_suffixes string[] суффиксы, удаляемые из пути итогового URL
 local config = {
     --- Постоянный редирект кодом 301
@@ -63,6 +64,7 @@ function config.new()
         dynamic_mode = false,
         check_timeout = 10,
         trim_suffix = "",
+        remove_suffixes = {},
         trim_target_suffixes = {},
         rules = {},
         root_path = nil,
@@ -250,6 +252,10 @@ function config:set_param(param, value)
         self.check_timeout = tonumber(value) or 10
     elseif param == "trim-suffix" then
         self.trim_suffix = tostring(value)
+    elseif param == "remove-suffix" then
+        if type(value) == "string" and value:find("%S") then
+            table.insert(self.remove_suffixes, value)
+        end
     elseif param == "trim-target-suffix" then
         table.insert(self.trim_target_suffixes, tostring(value))
     end

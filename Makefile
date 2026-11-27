@@ -6,6 +6,7 @@ start-nginx:
 
 test:
 	hurl --verbose --test tests/cases.hurl
+	sh tests/run_remove_suffix.sh
 
 vendor-homebrew:
 	luarocks install --lua-dir=/opt/homebrew/opt/luajit --tree ./src/vendor --no-doc --only-deps ./rockspec/red-git-1.rockspec
