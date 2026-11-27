@@ -8,17 +8,23 @@ on:
 
 jobs:
   testing:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v3
     - name: Build the Red image
       run: docker build . --file Dockerfile --tag red:latest
     - name: Test target suffix trimming
       run: docker run --rm -w /var/www --entrypoint /usr/local/openresty/luajit/bin/luajit red:latest tests/trim_target_suffix.lua
+    - name: Test incoming index redirects
+      run: docker run --rm -w /var/www --entrypoint /usr/local/openresty/luajit/bin/luajit red:latest tests/remove_suffix.lua
     - name: Run the Red image
       run: export CONTAINER_ID=$(docker run -d -p 8088:80 -v "$(pwd):/var/www" red:latest)
+    - name: Install Hurl dependencies
+      run: sudo apt-get update && sudo apt-get install -y libxml2
     - name: Install hurl
       run: /bin/bash build/install_hurl.sh
     - name: Start tests
       run: /tmp/hurl/hurl --verbose --test tests/cases.hurl
+    - name: Test index redirects with and without configuration
+      run: HURL_BIN=/tmp/hurl/hurl sh tests/run_remove_suffix.sh
       

@@ -55,6 +55,9 @@
     <config param="reload-timeout">30</config>
     <!-- Включение режима отладки. Error лог Nginx-а должен быть сконфижен с уровнем info. -->
     <config param="debug">false</config>
+    <!-- Redirects explicit requests for these final path segments to their directory, regardless of HTTP method -->
+    <config param="remove-suffix">index.html</config>
+    <config param="remove-suffix">index.htm</config>
     <!-- Removes a specific suffix from a URL before matching rules -->
     <config param="trim-suffix">index.html</config>
     <!-- Removes the longest matching suffix from the destination path after a redirect or forwarding rule matches -->

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlrewrite>
+    <!-- Deliberately no XML rules or locales. -->
+    <config param="reload-timeout">0</config>
+    <config param="trim-suffix">index.html</config>
+    <config param="remove-suffix">index.html</config>
+    <config param="remove-suffix">index.htm</config>
+</urlrewrite>
