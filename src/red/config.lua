@@ -253,7 +253,9 @@ function config:set_param(param, value)
     elseif param == "trim-suffix" then
         self.trim_suffix = tostring(value)
     elseif param == "remove-suffix" then
-        table.insert(self.remove_suffixes, tostring(value))
+        if type(value) == "string" and value:find("%S") then
+            table.insert(self.remove_suffixes, value)
+        end
     elseif param == "trim-target-suffix" then
         table.insert(self.trim_target_suffixes, tostring(value))
     end

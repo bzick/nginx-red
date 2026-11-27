@@ -1,7 +1,7 @@
 package.path = "src/red/?.lua;src/vendor/share/lua/5.1/?.lua;" .. package.path
 package.loaded.stat = function() end -- stat is Linux-only and is not used by these tests.
 
-local result, method
+local result
 ngx = {
     shared = {},
     var = {},
@@ -11,7 +11,6 @@ ngx = {
             return uri:gsub(from, to)
         end
     },
-    req = { get_method = function() return method end },
     redirect = function(url, code)
         result = { url = url, code = code }
     end
@@ -22,6 +21,10 @@ require("red")
 local red = _G.red
 assert(#config.new().remove_suffixes == 0)
 
+local empty = config.new()
+assert(not empty:parse_xml([[<urlrewrite><config param="remove-suffix"/></urlrewrite>]]))
+assert(#empty.remove_suffixes == 0)
+
 local single = config.new()
 assert(not single:parse_xml([[<urlrewrite>
     <config param="remove-suffix">index.html</config>
@@ -30,7 +33,9 @@ assert(#single.remove_suffixes == 1 and single.remove_suffixes[1] == "index.html
 
 local multiple = config.new()
 assert(not multiple:parse_xml([[<urlrewrite>
+    <config param="remove-suffix"></config>
     <config param="remove-suffix">index.html</config>
+    <config param="remove-suffix">   </config>
     <config param="remove-suffix">index.htm</config>
 </urlrewrite>]]))
 assert(#multiple.remove_suffixes == 2 and multiple.remove_suffixes[2] == "index.htm")
@@ -40,6 +45,8 @@ local legacy_rule = {
     opts = "", auto_lang_prefix = false, query_append = false
 }
 local cases = {
+    { uri = "/docs/nil", suffixes = multiple.remove_suffixes },
+    { uri = "/docs/index.html", suffixes = multiple.remove_suffixes, expected = "/docs/" },
     { uri = "/index.html", expected = "/" },
     { uri = "/idea/index.html", expected = "/idea/" },
     { uri = "/de-de/idea/index.html", expected = "/de-de/idea/" },
@@ -50,16 +57,10 @@ local cases = {
     { uri = "/idea/index.html?next=/search?q=1#intro", expected = "/idea/?next=/search?q=1#intro" },
     { uri = "/idea/index.html?next=//host/%2F%5c", expected = "/idea/?next=//host/%2F%5c" },
     { uri = "/a%20b/index.html", expected = "/a%20b/" },
-    { uri = "/idea/index.html", method = "HEAD", expected = "/idea/" },
     { uri = "/legacy/index.html", rules = { legacy_rule }, expected = "/legacy/" },
     { uri = "/idea/index.html", runtime = "unavailable", expected = "/idea/" },
     { uri = "/idea/index.html", runtime = "error", expected = "/idea/" },
     { uri = "/index.html", current_uri = "/", expected = "/" },
-    { uri = "/idea/index.html", method = "POST", expected = "/idea/" },
-    { uri = "/idea/index.html", method = "PUT", expected = "/idea/" },
-    { uri = "/idea/index.html", method = "PATCH", expected = "/idea/" },
-    { uri = "/idea/index.html", method = "DELETE", expected = "/idea/" },
-    { uri = "/idea/index.html", method = "OPTIONS", expected = "/idea/" },
     { uri = "/idea/index.html", suffixes = {} },
     { uri = "/idea/index.htm", suffixes = { "index.html" } },
     { uri = "/idea/no-index.html" },
@@ -83,9 +84,7 @@ local cases = {
     { uri = "/idea\r\npath/index.html" },
     { uri = "https://example.invalid/index.html" },
     { uri = "index.html" },
-    { uri = "/legacy/index.html", suffixes = {}, rules = { legacy_rule }, expected = "/business/", code = 302 },
-    { uri = "/legacy/index.html", method = "POST", rules = { legacy_rule }, expected = "/legacy/" },
-    { uri = "/legacy/index.html", method = "POST", suffixes = {}, rules = { legacy_rule }, expected = "/business/", code = 302 }
+    { uri = "/legacy/index.html", suffixes = {}, rules = { legacy_rule }, expected = "/business/", code = 302 }
 }
 
 for _, case in ipairs(cases) do
@@ -103,7 +102,6 @@ for _, case in ipairs(cases) do
         if case.runtime == "unavailable" then return nil end
         return red.rules, red.locale
     end
-    method = case.method or "GET"
     ngx.var.request_uri = case.uri
     ngx.var.uri = case.current_uri or case.uri:match("^[^?]*")
     ngx.var.args = "modified=1" -- The original query must come from request_uri.

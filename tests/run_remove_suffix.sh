@@ -16,14 +16,12 @@ trap 'exit 1' HUP INT TERM
 
 enabled_id=$(docker run --rm -d -p 127.0.0.1:8089:80 \
     -v "$repo_root:/var/www:ro" \
-    -e RED_CONFIG_PATH=/var/www/tests/config.remove-suffix.xml \
-    "$image" /usr/local/openresty/bin/openresty \
-    -c /var/www/tests/remove_suffix.nginx.conf -g 'daemon off;')
+    -v "$repo_root/tests/config.remove-suffix.xml:/var/www/config.samples.xml:ro" \
+    "$image")
 disabled_id=$(docker run --rm -d -p 127.0.0.1:8090:80 \
     -v "$repo_root:/var/www:ro" \
-    -e RED_CONFIG_PATH=/var/www/tests/config.no-remove-suffix.xml \
-    "$image" /usr/local/openresty/bin/openresty \
-    -c /var/www/tests/remove_suffix.nginx.conf -g 'daemon off;')
+    -v "$repo_root/tests/config.no-remove-suffix.xml:/var/www/config.samples.xml:ro" \
+    "$image")
 
 for port in 8089 8090; do
     if ! curl --silent --show-error --output /dev/null --connect-timeout 1 \

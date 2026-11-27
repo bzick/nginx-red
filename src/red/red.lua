@@ -99,10 +99,10 @@ local function canonical_index_target(request_uri, suffixes)
         or path:lower():find("%%2f") or path:lower():find("%%5c") then
         return nil
     end
-    local filename = path:match("([^/]+)$")
+    local directory, filename = path:match("^(.*/)([^/]+)$")
     for _, suffix in ipairs(suffixes) do
         if filename == suffix then
-            return utils.basedir(path) .. query
+            return directory .. query
         end
     end
 end
